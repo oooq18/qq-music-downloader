@@ -13,6 +13,9 @@ let currentSongs = [];
 // 播放/暂停图标（内联 SVG，避免 emoji 在不同平台渲染不一致）
 const ICON_PLAY = '<svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
 const ICON_PAUSE = '<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>';
+const ICON_CHECK = '<svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>';
+const ICON_RETRY = '<svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>';
+const ICON_DL = '<svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>';
 
 // ---- 播放器状态 ----
 let audio = null;          // 当前 Audio 实例
@@ -162,10 +165,11 @@ async function handleSearch() {
 
 function renderSongs(songs) {
   listEl.innerHTML = "";
-  songs.forEach((song) => {
+  songs.forEach((song, i) => {
     const card = document.createElement("div");
     card.className = "song";
     card.dataset.mid = song.songmid;
+    card.style.animationDelay = Math.min(i * 45, 700) + "ms";
 
     // 封面圆片（黑胶唱片）
     const disc = document.createElement("div");
@@ -228,11 +232,11 @@ function renderQualityBtn(song, q) {
   } else if (state && state.status === "done") {
     btn.classList.add("done");
     btn.disabled = true;
-    btn.innerHTML = '<span class="q-label">✓ 已完成</span>';
+    btn.innerHTML = '<span class="q-label">' + ICON_CHECK + " 已完成</span>";
   } else if (state && state.status === "error") {
     btn.classList.add("error");
     btn.title = state.error || "";
-    btn.innerHTML = '<span class="q-label">⚠ 重试</span><span class="q-size">' + QUALITY_LABELS[q] + "</span>";
+    btn.innerHTML = '<span class="q-label">' + ICON_RETRY + ' 重试</span><span class="q-size">' + QUALITY_LABELS[q] + '</span>';
     btn.onclick = () => startDownload(song, q);
   } else if (!size) {
     btn.classList.add("unavailable");
@@ -242,7 +246,7 @@ function renderQualityBtn(song, q) {
   } else {
     btn.innerHTML =
       '<span class="q-label">' + QUALITY_LABELS[q] + "</span>" +
-      '<span class="q-size">⬇ ' + formatSize(size) + "</span>";
+      '<span class="q-size">' + ICON_DL + " " + formatSize(size) + "</span>";
     btn.onclick = () => startDownload(song, q);
   }
   return btn;
