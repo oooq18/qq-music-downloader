@@ -84,6 +84,7 @@ async function search(keyword, page = 1, pageSize = 20) {
   const total = data?.data?.song?.totalnum ?? 0;
   const items = list.map((s) => ({
     songmid: s.songmid || "",
+    albummid: s.albummid || "",
     songname: s.songname || "",
     singer: (s.singer || []).map((x) => x.name).join(" / "),
     albumname: s.albumname || "",

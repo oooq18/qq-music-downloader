@@ -76,39 +76,48 @@ function renderSongs(songs) {
     card.className = "song";
     card.dataset.mid = song.songmid;
 
-    const top = document.createElement("div");
-    top.className = "song-top";
+    // 封面圆片（黑胶唱片）
+    const disc = document.createElement("div");
+    disc.className = "song-disc";
+    if (song.albummid) {
+      const img = new Image();
+      img.onload = () => {
+        disc.style.backgroundImage = "url(" + API_BASE + "/api/cover?albummid=" + encodeURIComponent(song.albummid) + ")";
+      };
+      img.src = API_BASE + "/api/cover?albummid=" + encodeURIComponent(song.albummid);
+    }
+    card.appendChild(disc);
 
-    // 预览播放按钮
+    // 歌曲信息
+    const body = document.createElement("div");
+    body.className = "song-body";
+    body.innerHTML =
+      '<div class="song-name">' + escapeHtml(song.songname) + "</div>" +
+      '<div class="song-meta">' +
+        "<span>" + escapeHtml(song.singer || "未知歌手") + "</span>" +
+        '<span class="sep">/</span>' +
+        "<span>" + escapeHtml(song.albumname || "未知专辑") + "</span>" +
+        '<span class="sep">/</span>' +
+        "<span>" + formatDuration(song.interval) + "</span>" +
+      "</div>";
+    card.appendChild(body);
+
+    // 操作区：播放 + 音质
+    const actions = document.createElement("div");
+    actions.className = "song-actions";
+
     const playBtn = document.createElement("button");
     playBtn.className = "song-play";
     playBtn.innerHTML = ICON_PLAY;
     playBtn.title = "预览播放";
     playBtn.dataset.mid = song.songmid;
     playBtn.addEventListener("click", () => togglePlay(song, playBtn));
-    top.appendChild(playBtn);
+    actions.appendChild(playBtn);
 
-    const info = document.createElement("div");
-    info.style.flex = "1";
-    info.style.minWidth = "0";
-    info.innerHTML =
-      '<div class="song-name">' + escapeHtml(song.songname) + "</div>" +
-      '<div class="song-meta">' +
-        "<span>" + escapeHtml(song.singer || "未知歌手") + "</span>" +
-        '<span class="sep">·</span>' +
-        "<span>" + escapeHtml(song.albumname || "未知专辑") + "</span>" +
-        '<span class="sep">·</span>' +
-        "<span>" + formatDuration(song.interval) + "</span>" +
-      "</div>";
-    top.appendChild(info);
-
-    const qualities = document.createElement("div");
-    qualities.className = "qualities";
     ["flac", "320", "128"].forEach((q) => {
-      qualities.appendChild(renderQualityBtn(song, q));
+      actions.appendChild(renderQualityBtn(song, q));
     });
-    top.appendChild(qualities);
-    card.appendChild(top);
+    card.appendChild(actions);
     listEl.appendChild(card);
   });
 }
@@ -298,7 +307,6 @@ async function togglePlay(song, btn) {
 
   // 获取 128kbps 直链
   setPlayBtn(btn, false);
-  btn.innerHTML = "···";
   try {
     const res = await fetch(
       API_BASE + "/api/music/download?songmid=" + encodeURIComponent(song.songmid) + "&quality=128"
@@ -319,20 +327,24 @@ async function togglePlay(song, btn) {
     });
     audio.addEventListener("play", () => {
       playerPlay.innerHTML = ICON_PAUSE;
+      playerCover.classList.add("spinning");
       highlightPlayBtn(song.songmid);
     });
     audio.addEventListener("pause", () => {
       playerPlay.innerHTML = ICON_PLAY;
+      playerCover.classList.remove("spinning");
       highlightPlayBtn(song.songmid);
     });
     audio.addEventListener("ended", () => {
       playerPlay.innerHTML = ICON_PLAY;
+      playerCover.classList.remove("spinning");
       highlightPlayBtn(song.songmid);
       playerFill.style.width = "0%";
       playerCur.textContent = "00:00";
     });
     audio.addEventListener("error", () => {
       playerPlay.innerHTML = ICON_PLAY;
+      playerCover.classList.remove("spinning");
       btn.innerHTML = ICON_PLAY;
       if (playBtnOf === btn) playBtnOf = null;
     });
@@ -342,13 +354,12 @@ async function togglePlay(song, btn) {
     playerName.textContent = song.songname;
     playerSinger.textContent = song.singer || "未知歌手";
     playerCover.style.backgroundImage = "";
-    
+
     if (song.albummid) {
       const coverUrl = API_BASE + "/api/cover?albummid=" + encodeURIComponent(song.albummid);
       const img = new Image();
       img.onload = () => {
         playerCover.style.backgroundImage = "url(" + coverUrl + ")";
-        playerCover.textContent = "";
       };
       img.src = coverUrl;
     }
@@ -356,6 +367,7 @@ async function togglePlay(song, btn) {
     await audio.play();
     setPlayBtn(btn, true);
     playerPlay.innerHTML = ICON_PAUSE;
+    playerCover.classList.add("spinning");
   } catch (err) {
     btn.innerHTML = ICON_PLAY;
     statusEl.innerHTML = "<p>播放失败：" + escapeHtml(err.message) + "</p>";
@@ -372,6 +384,7 @@ playerClose.addEventListener("click", () => {
   if (audio) { audio.pause(); audio.src = ""; }
   currentSong = null;
   playerEl.classList.add("hidden");
+  playerCover.classList.remove("spinning");
   highlightPlayBtn("");
   playerFill.style.width = "0%";
   playerCur.textContent = "00:00";
