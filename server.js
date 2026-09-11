@@ -161,31 +161,45 @@ app.get("/api/music/download", async (req, res) => {
     const q = ["flac", "320", "128"].includes(req.query.quality) ? req.query.quality : "320";
     if (!songmid) return res.status(400).json({ message: "songmid 不能为空" });
     const downloadUrl = await getDownloadUrl(songmid, q);
-    const upstream = await fetch(downloadUrl, {
-      headers: { Referer: REFERER, Cookie: makeCookie(), "User-Agent": UA },
-      signal: AbortSignal.timeout(300000),
-    });
-    if (!upstream.ok) {
-      if (upstream.status === 403) return res.status(403).json({ message: "登录态已失效，请更新 QQ 音乐登录密钥" });
-      return res.status(upstream.status).json({ message: "下载失败：" + upstream.status });
-    }
-    const contentLength = upstream.headers.get("content-length");
-    const contentType = upstream.headers.get("content-type") || "application/octet-stream";
-    const ext = q === "flac" ? "flac" : "mp3";
-    if (contentLength) res.setHeader("Content-Length", contentLength);
-    res.setHeader("Content-Type", contentType);
-    res.setHeader("Accept-Ranges", "bytes");
-    res.setHeader("Content-Disposition", `attachment; filename="${encodeURIComponent(songmid + "." + ext)}"`);
-    const reader = upstream.body.getReader();
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      res.write(Buffer.from(value));
-    }
-    res.end();
+    res.json({ url: downloadUrl });
   } catch (err) {
-    if (!res.headersSent) res.status(500).json({ message: err.message || "下载失败" });
-    else res.end();
+    res.status(500).json({ message: err.message || "下载失败" });
+  }
+});
+
+// 封面（代理 QQ 音乐封面图）
+app.get("/api/cover", async (req, res) => {
+  try {
+    const albummid = String(req.query.albummid || "");
+    if (!albummid) return res.status(400).json({ message: "albummid 不能为空" });
+    const img = await fetch(`https://y.qq.com/music/photo_new/T002R800x800M000${albummid}_2.jpg?max_age=2592000`, {
+      headers: { "User-Agent": UA, Referer: REFERER },
+    });
+    if (!img.ok) return res.status(502).json({ message: "封面获取失败" });
+    res.setHeader("Content-Type", img.headers.get("content-type") || "image/jpeg");
+    res.setHeader("Cache-Control", "public, max-age=86400");
+    res.send(Buffer.from(await img.arrayBuffer()));
+  } catch (err) {
+    res.status(500).json({ message: err.message || "封面获取失败" });
+  }
+});
+
+// 歌词
+app.get("/api/lyric", async (req, res) => {
+  try {
+    const songmid = String(req.query.songmid || "");
+    if (!songmid) return res.status(400).json({ message: "songmid 不能为空" });
+    const lr = await fetch(
+      `https://c.y.qq.com/lyric/fcgi-bin/fcg_query_lyric_new.fcg?songmid=${encodeURIComponent(songmid)}&format=json`,
+      { headers: { Referer: REFERER, "User-Agent": UA } }
+    );
+    if (!lr.ok) return res.status(502).json({ message: "歌词获取失败" });
+    const lj = await lr.json();
+    let lyric = "";
+    if (lj && lj.lyric) lyric = decodeURIComponent(escape(Buffer.from(lj.lyric, "base64").toString("binary")));
+    res.json({ lyric });
+  } catch (err) {
+    res.status(500).json({ message: err.message || "歌词获取失败" });
   }
 });
 

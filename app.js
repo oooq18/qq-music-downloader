@@ -9,6 +9,20 @@ const QUALITY_SIZE_KEYS = { flac: "sizeflac", 320: "size320", 128: "size128" };
 const downloadStates = new Map();
 let currentSongs = [];
 
+// ---- 播放器状态 ----
+let audio = null;          // 当前 Audio 实例
+let currentSong = null;    // 当前播放的歌曲对象
+let playBtnOf = null;      // 当前高亮的播放按钮
+const playerEl = document.getElementById("player");
+const playerCover = document.getElementById("playerCover");
+const playerName = document.getElementById("playerName");
+const playerSinger = document.getElementById("playerSinger");
+const playerFill = document.getElementById("playerFill");
+const playerCur = document.getElementById("playerCur");
+const playerDur = document.getElementById("playerDur");
+const playerPlay = document.getElementById("playerPlay");
+const playerClose = document.getElementById("playerClose");
+
 function formatSize(bytes) {
   if (!bytes) return "-";
   if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + " KB";
@@ -60,6 +74,15 @@ function renderSongs(songs) {
 
     const top = document.createElement("div");
     top.className = "song-top";
+
+    // 预览播放按钮
+    const playBtn = document.createElement("button");
+    playBtn.className = "song-play";
+    playBtn.innerHTML = "▶";
+    playBtn.title = "预览播放";
+    playBtn.dataset.mid = song.songmid;
+    playBtn.addEventListener("click", () => togglePlay(song, playBtn));
+    top.appendChild(playBtn);
 
     const info = document.createElement("div");
     info.style.flex = "1";
@@ -226,3 +249,136 @@ async function startDownload(song, q) {
 
 searchBtn.addEventListener("click", handleSearch);
 keywordEl.addEventListener("keydown", (e) => { if (e.key === "Enter") handleSearch(); });
+
+// ============================================================
+// 播放器（预览 128kbps）
+// ============================================================
+function fmtTime(s) {
+  if (!isFinite(s) || s < 0) s = 0;
+  return Math.floor(s / 60) + ":" + String(Math.floor(s % 60)).padStart(2, "0");
+}
+
+function setPlayBtn(btn, playing) {
+  if (!btn) return;
+  btn.innerHTML = playing ? "⏸" : "▶";
+  btn.classList.toggle("playing", playing);
+}
+
+function highlightPlayBtn(songmid) {
+  document.querySelectorAll(".song-play").forEach((b) => {
+    setPlayBtn(b, b.dataset.mid === songmid && audio && !audio.paused);
+  });
+  playBtnOf = document.querySelector('.song-play[data-mid="' + songmid + '"]');
+}
+
+async function togglePlay(song, btn) {
+  // 同一首歌：切换播放/暂停
+  if (audio && currentSong && currentSong.songmid === song.songmid) {
+    if (audio.paused) {
+      audio.play();
+      setPlayBtn(btn, true);
+      playerPlay.textContent = "⏸";
+    } else {
+      audio.pause();
+      setPlayBtn(btn, false);
+      playerPlay.textContent = "▶";
+    }
+    return;
+  }
+
+  // 切歌：先停旧的
+  if (audio) {
+    audio.pause();
+    audio.src = "";
+  }
+
+  // 获取 128kbps 直链
+  setPlayBtn(btn, false);
+  btn.innerHTML = "···";
+  try {
+    const res = await fetch(
+      API_BASE + "/api/music/download?songmid=" + encodeURIComponent(song.songmid) + "&quality=128"
+    );
+    let data = {};
+    try { data = await res.json(); } catch (_) {}
+    if (!res.ok || !data.url) throw new Error(data.message || "获取播放地址失败");
+
+    currentSong = song;
+    audio = new Audio(data.url);
+    audio.preload = "auto";
+
+    audio.addEventListener("timeupdate", () => {
+      if (!audio.duration) return;
+      playerFill.style.width = (audio.currentTime / audio.duration) * 100 + "%";
+      playerCur.textContent = fmtTime(audio.currentTime);
+      playerDur.textContent = fmtTime(audio.duration);
+    });
+    audio.addEventListener("play", () => {
+      playerPlay.textContent = "⏸";
+      highlightPlayBtn(song.songmid);
+    });
+    audio.addEventListener("pause", () => {
+      playerPlay.textContent = "▶";
+      highlightPlayBtn(song.songmid);
+    });
+    audio.addEventListener("ended", () => {
+      playerPlay.textContent = "▶";
+      highlightPlayBtn(song.songmid);
+      playerFill.style.width = "0%";
+      playerCur.textContent = "00:00";
+    });
+    audio.addEventListener("error", () => {
+      playerPlay.textContent = "▶";
+      btn.innerHTML = "▶";
+      if (playBtnOf === btn) playBtnOf = null;
+    });
+
+    // 更新播放器信息
+    playerEl.classList.remove("hidden");
+    playerName.textContent = song.songname;
+    playerSinger.textContent = song.singer || "未知歌手";
+    playerCover.style.backgroundImage = "";
+    playerCover.textContent = "♪";
+    if (song.albummid) {
+      const coverUrl = API_BASE + "/api/cover?albummid=" + encodeURIComponent(song.albummid);
+      const img = new Image();
+      img.onload = () => {
+        playerCover.style.backgroundImage = "url(" + coverUrl + ")";
+        playerCover.textContent = "";
+      };
+      img.src = coverUrl;
+    }
+
+    await audio.play();
+    setPlayBtn(btn, true);
+    playerPlay.textContent = "⏸";
+  } catch (err) {
+    btn.innerHTML = "▶";
+    statusEl.innerHTML = "<p>播放失败：" + escapeHtml(err.message) + "</p>";
+  }
+}
+
+// 播放器控制
+playerPlay.addEventListener("click", () => {
+  if (!audio || !currentSong) return;
+  if (audio.paused) audio.play();
+  else audio.pause();
+});
+playerClose.addEventListener("click", () => {
+  if (audio) { audio.pause(); audio.src = ""; }
+  currentSong = null;
+  playerEl.classList.add("hidden");
+  highlightPlayBtn("");
+  playerFill.style.width = "0%";
+  playerCur.textContent = "00:00";
+  playerDur.textContent = "00:00";
+});
+
+// 进度条点击跳转
+const playerTrack = document.querySelector(".progress-track");
+playerTrack.addEventListener("click", (e) => {
+  if (!audio || !audio.duration) return;
+  const rect = playerTrack.getBoundingClientRect();
+  const ratio = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
+  audio.currentTime = ratio * audio.duration;
+});
