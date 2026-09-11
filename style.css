@@ -1,18 +1,8 @@
 /* ============================================================
    音乐终端 —— 黑胶档案室
-   字体：字魂59创粗黑（中文标题）/ Rajdhani Medium（英文数字）
+   字体：系统字体（PingFang SC / Microsoft YaHei）
    配色：暖黑 + 琥珀金
    ============================================================ */
-@font-face {
-  font-family: "WanderEarth-CN";
-  src: url("fonts/WanderEarth-CN.ttf") format("truetype");
-  font-display: swap;
-}
-@font-face {
-  font-family: "Rajdhani";
-  src: url("fonts/Rajdhani-Medium.otf") format("opentype");
-  font-display: swap;
-}
 
 :root {
   --bg: #13110c;
@@ -37,7 +27,7 @@ html, body { min-height: 100%; }
 body {
   background: var(--bg);
   color: var(--text);
-  font-family: "Rajdhani", "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
 }
@@ -85,7 +75,7 @@ body::before {
   height: 26px;
   border: 1px solid var(--line-strong);
   color: var(--gold);
-  font-family: "WanderEarth-CN", sans-serif;
+  font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
   font-size: 15px;
   display: flex;
   align-items: center;
@@ -94,7 +84,7 @@ body::before {
   flex-shrink: 0;
 }
 .brand-name {
-  font-family: "WanderEarth-CN", "PingFang SC", sans-serif;
+  font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
   font-size: 15px;
   letter-spacing: 2px;
   color: var(--text);
@@ -128,7 +118,7 @@ body::before {
   margin-bottom: 18px;
 }
 .hero-title {
-  font-family: "WanderEarth-CN", "PingFang SC", sans-serif;
+  font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
   font-size: clamp(44px, 9vw, 72px);
   font-weight: 800;
   letter-spacing: 10px;
@@ -183,7 +173,7 @@ body::before {
   border: none;
   border-radius: 9px;
   color: #1a150b;
-  font-family: "WanderEarth-CN", "PingFang SC", sans-serif;
+  font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
   font-size: 14px;
   letter-spacing: 3px;
   padding: 9px 22px;
@@ -263,7 +253,7 @@ body::before {
 
 .song-body { flex: 1; min-width: 0; }
 .song-name {
-  font-family: "WanderEarth-CN", "PingFang SC", sans-serif;
+  font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
   font-size: 16px;
   color: var(--text);
   letter-spacing: 0.5px;
@@ -411,7 +401,7 @@ body::before {
 
 .player-info { flex: 1; min-width: 0; }
 .player-name {
-  font-family: "WanderEarth-CN", "PingFang SC", sans-serif;
+  font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
   font-size: 14px;
   color: var(--text);
   letter-spacing: 1px;
