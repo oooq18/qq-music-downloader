@@ -97,7 +97,7 @@ function renderQualityBtn(song, q) {
   if (state && state.status === "downloading") {
     btn.classList.add("downloading");
     btn.disabled = true;
-    btn.innerHTML = '<span class="q-label">获取中...</span>';
+    btn.innerHTML = '<span class="q-label">' + (state.progress || 0) + "%</span>";
   } else if (state && state.status === "done") {
     btn.classList.add("done");
     btn.disabled = true;
@@ -133,35 +133,62 @@ async function startDownload(song, q) {
   if (!size) return;
   if (downloadStates.get(key)?.status === "downloading") return;
 
-  downloadStates.set(key, { status: "downloading" });
+  downloadStates.set(key, { status: "downloading", progress: 0 });
   replaceBtn(song, q);
 
   const card = document.querySelector('.song[data-mid="' + song.songmid + '"]');
   const oldErr = card.querySelector(".error-msg");
   if (oldErr) oldErr.remove();
 
+  const bar = document.createElement("div");
+  bar.className = "progress-bar";
+  bar.innerHTML = '<div class="fill" style="width:0%"></div>';
+  card.appendChild(bar);
+  const fill = bar.querySelector(".fill");
+
   try {
+    // 1. 从 Worker 获取下载直链
     const res = await fetch(
       API_BASE + "/api/music/download?songmid=" + encodeURIComponent(song.songmid) + "&quality=" + q
     );
     let data = {};
     try { data = await res.json(); } catch (_) {}
-    if (!res.ok || !data.url) throw new Error(data.message || "下载失败");
+    if (!res.ok || !data.url) throw new Error(data.message || "获取下载地址失败");
 
+    // 2. 浏览器直连 QQ 流服务器拉取（已确认支持 CORS），带进度
+    const streamRes = await fetch(data.url);
+    if (!streamRes.ok) throw new Error("下载失败：" + streamRes.status);
+    const total = Number(streamRes.headers.get("Content-Length")) || 0;
+    const reader = streamRes.body.getReader();
+    const chunks = [];
+    let received = 0;
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value);
+      received += value.length;
+      if (total) {
+        const pct = Math.min(99, Math.round((received / total) * 100));
+        downloadStates.get(key).progress = pct;
+        fill.style.width = pct + "%";
+      }
+    }
     downloadStates.set(key, { status: "done" });
-    replaceBtn(song, q);
+    fill.style.width = "100%";
 
-    // 拿到直链后交给浏览器下载（直链来自 QQ 音乐流服务器）
+    // 3. 保存为本地文件（文件名正常显示歌曲信息）
+    const blob = new Blob(chunks, { type: streamRes.headers.get("Content-Type") || "application/octet-stream" });
+    const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    a.href = data.url;
+    a.href = url;
     a.download = (song.songname + " - " + song.singer + (q === "flac" ? ".flac" : ".mp3"))
       .replace(/[\\/:*?"<>|]/g, "_");
-    a.target = "_blank";
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
+    URL.revokeObjectURL(url);
 
-    setTimeout(() => { downloadStates.delete(key); replaceBtn(song, q); }, 4000);
+    setTimeout(() => { downloadStates.delete(key); replaceBtn(song, q); }, 3000);
   } catch (err) {
     downloadStates.set(key, { status: "error", error: err.message });
     replaceBtn(song, q);
@@ -169,6 +196,8 @@ async function startDownload(song, q) {
     errDiv.className = "error-msg";
     errDiv.textContent = "下载失败：" + err.message;
     card.appendChild(errDiv);
+  } finally {
+    bar.remove();
   }
 }
 
