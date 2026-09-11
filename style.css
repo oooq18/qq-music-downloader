@@ -1,7 +1,7 @@
 /* ============================================================
-   流浪地球 · 音乐终端 —— 科幻终端风格
+   音乐终端 —— 科幻终端风格
    字体：字魂59创粗黑（中文标题）/ Rajdhani Medium（英文数字）
-   配色：深空黑 + UEG 青蓝 + 警示橙黄
+   配色：深空黑 + 青蓝 + 警示橙黄
    ============================================================ */
 @font-face {
   font-family: "WanderEarth-CN";
@@ -109,29 +109,32 @@ body {
 }
 .logo-icon {
   display: flex;
+  align-items: flex-end;
   gap: 3px;
-  font-family: "Rajdhani", sans-serif;
-  font-weight: 700;
-  font-size: 22px;
-  letter-spacing: 1px;
+  height: 30px;
 }
-.logo-icon span {
-  border: 1.5px solid var(--line-strong);
-  color: var(--blue);
-  padding: 2px 5px;
-  background: rgba(53, 196, 240, 0.07);
-  text-shadow: 0 0 8px rgba(53, 196, 240, 0.8);
-  animation: flicker 6s infinite;
+.logo-icon .bar {
+  width: 5px;
+  border: 1px solid var(--line-strong);
+  background: rgba(53, 196, 240, 0.16);
+  box-shadow: 0 0 8px rgba(53, 196, 240, 0.45);
 }
-.logo-icon .e { animation-delay: 0.8s; }
-.logo-icon .g { animation-delay: 1.6s; }
-@keyframes flicker {
-  0%, 100% { opacity: 1; }
-  92% { opacity: 1; }
-  93% { opacity: 0.55; }
-  94% { opacity: 1; }
-  97% { opacity: 0.7; }
-  98% { opacity: 1; }
+.logo-icon .b1 { height: 34%; }
+.logo-icon .b2 { height: 62%; }
+.logo-icon .b3 { height: 100%; }
+.logo-icon .b4 { height: 78%; }
+.logo-icon .b5 { height: 46%; }
+.logo-icon .bar {
+  animation: eqbar 1.6s ease-in-out infinite;
+}
+.logo-icon .b1 { animation-delay: 0s; }
+.logo-icon .b2 { animation-delay: 0.25s; }
+.logo-icon .b3 { animation-delay: 0.5s; }
+.logo-icon .b4 { animation-delay: 0.75s; }
+.logo-icon .b5 { animation-delay: 1s; }
+@keyframes eqbar {
+  0%, 100% { transform: scaleY(0.55); }
+  50% { transform: scaleY(1); }
 }
 
 .logo-text h1 {

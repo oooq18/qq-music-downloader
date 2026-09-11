@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>流浪地球 · 音乐终端</title>
+  <title>音乐终端 · MUSIC TERMINAL</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -14,15 +14,15 @@
     <header class="header">
       <div class="topbar">
         <span class="topbar-l">MUSIC TERMINAL // v2.2</span>
-        <span class="topbar-r">EARTH UNITED GOVERNMENT</span>
+        <span class="topbar-r">AUDIO GRID // SECURE CHANNEL</span>
       </div>
       <div class="logo">
-        <div class="logo-icon">
-          <span class="u">U</span><span class="e">E</span><span class="g">G</span>
+        <div class="logo-icon" aria-hidden="true">
+          <span class="bar b1"></span><span class="bar b2"></span><span class="bar b3"></span><span class="bar b4"></span><span class="bar b5"></span>
         </div>
         <div class="logo-text">
-          <h1>流浪地球 · 音乐终端</h1>
-          <p class="subtitle">MUSIC DOWNLOAD TERMINAL / 550W 下载单元</p>
+          <h1>音乐终端</h1>
+          <p class="subtitle">MUSIC DOWNLOAD TERMINAL / AUDIO GRID ONLINE</p>
         </div>
       </div>
       <div class="dec-line"><span></span></div>
@@ -41,7 +41,7 @@
     <div id="resultMeta" class="result-meta"></div>
     <div id="songList" class="song-list"></div>
 
-    <footer class="footer">仅供学习研究使用 · 请支持正版音乐 · 流浪地球 © 郭帆/中影</footer>
+    <footer class="footer">仅供学习研究使用 · 请支持正版音乐</footer>
   </div>
 
   <!-- 底部播放器 -->
@@ -55,8 +55,12 @@
         <div class="player-time"><span id="playerCur">00:00</span><span id="playerDur">00:00</span></div>
       </div>
     </div>
-    <button id="playerPlay" class="player-play">▶</button>
-    <button id="playerClose" class="player-close">✕</button>
+    <button id="playerPlay" class="player-play" aria-label="播放或暂停">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+    </button>
+    <button id="playerClose" class="player-close" aria-label="关闭播放器">
+      <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
   </div>
 
   <script src="config.js"></script>
