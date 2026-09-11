@@ -105,12 +105,44 @@ async function search(keyword, page = 1, pageSize = 20) {
     songname: s.songname || "",
     singer: (s.singer || []).map((x) => x.name).join(" / "),
     albumname: s.albumname || "",
+    albummid: s.albummid || "",
     interval: s.interval || 0,
     sizeflac: s.sizeflac || 0,
     size320: s.size320 || 0,
     size128: s.size128 || 0,
   }));
   return { items, total };
+}
+
+// 封面图片（Worker 代理，附带 CORS 头供前端 fetch）
+async function getCover(albummid) {
+  const img = await fetch(`https://y.qq.com/music/photo_new/T002R800x800M000${albummid}_2.jpg?max_age=2592000`, {
+    headers: { "User-Agent": UA, Referer: REFERER },
+  });
+  if (!img.ok) throw new Error("封面获取失败");
+  const buf = await img.arrayBuffer();
+  return new Response(buf, {
+    headers: {
+      "Access-Control-Allow-Origin": "*",
+      "Content-Type": img.headers.get("content-type") || "image/jpeg",
+      "Cache-Control": "public, max-age=86400",
+    },
+  });
+}
+
+// 歌词（LRC 文本）
+async function getLyric(songmid) {
+  const lr = await fetch(
+    `https://c.y.qq.com/lyric/fcgi-bin/fcg_query_lyric_new.fcg?songmid=${encodeURIComponent(songmid)}&format=json`,
+    { headers: { Referer: REFERER, "User-Agent": UA } }
+  );
+  if (!lr.ok) throw new Error("歌词获取失败");
+  const lj = await lr.json();
+  let lyric = "";
+  if (lj && lj.lyric) {
+    lyric = decodeURIComponent(escape(atob(lj.lyric)));
+  }
+  return { lyric };
 }
 
 // 获取下载地址（ag-1 协议）
@@ -189,6 +221,16 @@ export default {
         if (!songmid) return json({ message: "songmid 不能为空" }, 400);
         const streamUrl = await getDownloadUrl(songmid, quality, env);
         return json({ url: streamUrl });
+      }
+      if (url.pathname === "/api/cover") {
+        const albummid = url.searchParams.get("albummid") || "";
+        if (!albummid) return json({ message: "albummid 不能为空" }, 400);
+        return await getCover(albummid);
+      }
+      if (url.pathname === "/api/lyric") {
+        const songmid = url.searchParams.get("songmid") || "";
+        if (!songmid) return json({ message: "songmid 不能为空" }, 400);
+        return json(await getLyric(songmid));
       }
       return json({ message: "Not Found" }, 404);
     } catch (err) {

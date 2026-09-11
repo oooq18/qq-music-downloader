@@ -147,13 +147,21 @@ async function startDownload(song, q) {
   const fill = bar.querySelector(".fill");
 
   try {
-    // 1. 从 Worker 获取下载直链
-    const res = await fetch(
-      API_BASE + "/api/music/download?songmid=" + encodeURIComponent(song.songmid) + "&quality=" + q
-    );
+    // 1. 获取下载直链，同时并行拉取封面和歌词
+    const [dlRes, coverBlob, lyricText] = await Promise.all([
+      fetch(API_BASE + "/api/music/download?songmid=" + encodeURIComponent(song.songmid) + "&quality=" + q),
+      song.albummid
+        ? fetch(API_BASE + "/api/cover?albummid=" + encodeURIComponent(song.albummid))
+            .then((r) => (r.ok ? r.blob() : null))
+            .catch(() => null)
+        : Promise.resolve(null),
+      fetch(API_BASE + "/api/lyric?songmid=" + encodeURIComponent(song.songmid))
+        .then((r) => (r.ok ? r.json().then((j) => j.lyric || "") : ""))
+        .catch(() => ""),
+    ]);
     let data = {};
-    try { data = await res.json(); } catch (_) {}
-    if (!res.ok || !data.url) throw new Error(data.message || "获取下载地址失败");
+    try { data = await dlRes.json(); } catch (_) {}
+    if (!dlRes.ok || !data.url) throw new Error(data.message || "获取下载地址失败");
 
     // 2. 浏览器直连 QQ 流服务器拉取（已确认支持 CORS），带进度
     const streamRes = await fetch(data.url);
@@ -173,11 +181,26 @@ async function startDownload(song, q) {
         fill.style.width = pct + "%";
       }
     }
-    downloadStates.set(key, { status: "done" });
-    fill.style.width = "100%";
 
-    // 3. 保存为本地文件（文件名正常显示歌曲信息）
-    const blob = new Blob(chunks, { type: streamRes.headers.get("Content-Type") || "application/octet-stream" });
+    // 3. 内嵌封面和歌词元数据
+    fill.style.width = "100%";
+    statusEl.innerHTML = '<div class="spinner"></div><p>正在写入封面和歌词...</p>';
+    const audioBytes = new Uint8Array(received);
+    let off = 0;
+    for (const c of chunks) {
+      audioBytes.set(c, off);
+      off += c.length;
+    }
+    const meta = { title: song.songname, artist: song.singer, album: song.albumname, lyric: lyricText };
+    const finalBytes = await window.embedMetaToBytes(audioBytes, q === "flac" ? "flac" : "mp3", meta, coverBlob);
+    const type = q === "flac" ? "audio/flac" : "audio/mpeg";
+    statusEl.innerHTML = "";
+
+    downloadStates.set(key, { status: "done" });
+    replaceBtn(song, q);
+
+    // 4. 保存为本地文件（带封面和歌词）
+    const blob = new Blob([finalBytes], { type });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
