@@ -1,23 +1,19 @@
 /* ============================================================
-   音乐终端 —— 黑胶档案室
-   字体：系统字体（PingFang SC / Microsoft YaHei）
-   配色：暖黑 + 琥珀金
+   音乐终端 —— 极简黑白 / 封面取色氛围
+   设计语言：高对比黑白 + 超大排印 + 动态氛围光（取色自封面）
    ============================================================ */
 
 :root {
-  --bg: #13110c;
-  --bg-deep: #0e0d09;
-  --panel: #1b1812;
-  --gold: #d8a13b;
-  --gold-light: #f0d9a0;
-  --gold-dim: #8a6d2f;
-  --text: #efe7d6;
-  --text-dim: #a2947a;
-  --text-faint: #6f6655;
-  --line: rgba(216, 161, 59, 0.16);
-  --line-strong: rgba(216, 161, 59, 0.42);
-  --danger: #d97a5f;
-  --ok: #8fb78f;
+  --bg: #0a0a0c;
+  --panel: #101014;
+  --text: #f4f4f1;
+  --text-dim: #9a9aa2;
+  --text-faint: #5c5c66;
+  --line: rgba(255, 255, 255, 0.08);
+  --line-strong: rgba(255, 255, 255, 0.22);
+  --accent: #c9cad2;
+  --accent-soft: rgba(201, 202, 210, 0.18);
+  --accent-glow: rgba(201, 202, 210, 0.10);
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -27,134 +23,113 @@ html, body { min-height: 100%; }
 body {
   background: var(--bg);
   color: var(--text);
-  font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-family: "PingFang SC", "Microsoft YaHei", -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
 }
 
-/* ---- 氛围：暖光晕 + 胶片颗粒 ---- */
-body::before {
-  content: "";
+/* ---- 动态氛围光（取色自封面，JS 更新 --accent） ---- */
+.ambient {
   position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(ellipse 95% 60% at 50% -14%, var(--accent-soft), transparent 66%),
+    radial-gradient(ellipse 65% 45% at 50% 118%, var(--accent-soft), transparent 62%);
+  transition: background 1.2s ease;
+}
+.ambient::after {
+  content: "";
+  position: absolute;
   inset: 0;
   background:
-    radial-gradient(ellipse 90% 46% at 50% -12%, rgba(216, 161, 59, 0.10), transparent 62%),
-    radial-gradient(ellipse 60% 30% at 85% 108%, rgba(216, 161, 59, 0.05), transparent 60%);
-  pointer-events: none;
-  z-index: 0;
-}
-.grain {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-  opacity: 0.05;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+    radial-gradient(ellipse 34% 20% at 50% 0%, var(--accent-glow), transparent 70%);
+  opacity: 0.5;
+  transition: background 1.2s ease;
 }
 
 /* ---- 布局 ---- */
 .app {
   position: relative;
   z-index: 1;
-  max-width: 720px;
+  max-width: 780px;
   margin: 0 auto;
-  padding: 0 20px 150px;
+  padding: 0 24px 150px;
 }
 
 /* ---- 顶栏 ---- */
 .header {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 26px 0 20px;
-  border-bottom: 1px solid var(--line);
+  gap: 12px;
+  padding: 28px 2px 22px;
   font-size: 13px;
 }
 .brand-mark {
-  width: 26px;
-  height: 26px;
-  border: 1px solid var(--line-strong);
-  color: var(--gold);
-  font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
-  font-size: 15px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  width: 9px;
+  height: 9px;
   border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 12px var(--accent);
   flex-shrink: 0;
+  transition: background 1.2s, box-shadow 1.2s;
 }
 .brand-name {
-  font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
-  font-size: 15px;
-  letter-spacing: 2px;
+  font-size: 14px;
+  letter-spacing: 3px;
   color: var(--text);
+  font-weight: 600;
 }
 .brand-en {
-  font-size: 12px;
+  font-size: 11px;
   letter-spacing: 3px;
   color: var(--text-faint);
   text-transform: uppercase;
-  padding-left: 4px;
+  padding-left: 12px;
   border-left: 1px solid var(--line);
 }
 .header-status {
   margin-left: auto;
-  font-size: 11px;
-  letter-spacing: 2px;
-  color: var(--gold-dim);
-  text-transform: uppercase;
-}
-
-/* ---- Hero ---- */
-.hero {
-  text-align: center;
-  padding: 72px 0 44px;
-}
-.hero-eyebrow {
-  font-size: 12px;
-  letter-spacing: 5px;
-  color: var(--gold-dim);
-  text-transform: uppercase;
-  margin-bottom: 18px;
-}
-.hero-title {
-  font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
-  font-size: clamp(44px, 9vw, 72px);
-  font-weight: 800;
-  letter-spacing: 10px;
-  color: transparent;
-  background: linear-gradient(180deg, #f4e3b2 8%, #d8a13b 55%, #8a6d2f 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  filter: drop-shadow(0 2px 22px rgba(216, 161, 59, 0.22));
-  white-space: nowrap;
-}
-.hero-sub {
-  margin-top: 12px;
-  font-size: 14px;
-  letter-spacing: 8px;
+  font-size: 10px;
+  letter-spacing: 3px;
   color: var(--text-faint);
   text-transform: uppercase;
+  transition: color 1s;
+}
+.header-status.live { color: var(--accent); }
+
+/* ---- Hero：超大排印 ---- */
+.hero {
+  padding: 84px 0 56px;
+}
+.hero-title {
+  font-size: clamp(52px, 11vw, 104px);
+  font-weight: 800;
+  line-height: 0.98;
+  letter-spacing: 0.02em;
+  color: var(--text);
+  font-family: "PingFang SC", "Microsoft YaHei", -apple-system, sans-serif;
+}
+.hero-title::selection { background: var(--accent); color: #0a0a0c; }
+.hero-sub {
+  margin-top: 20px;
+  font-size: 13px;
+  letter-spacing: 6px;
+  color: var(--text-faint);
 }
 
-/* ---- 搜索框 ---- */
+/* ---- 搜索框：无框，发丝线 ---- */
 .search-box {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin: 42px auto 0;
-  max-width: 560px;
-  background: rgba(27, 24, 18, 0.9);
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  padding: 7px 8px 7px 18px;
-  transition: border-color 0.25s, box-shadow 0.25s;
+  gap: 16px;
+  margin-top: 56px;
+  padding: 16px 2px 14px;
+  border-bottom: 1px solid var(--line);
+  transition: border-color 0.3s;
 }
-.search-box:focus-within {
-  border-color: var(--line-strong);
-  box-shadow: 0 0 0 3px rgba(216, 161, 59, 0.08), 0 10px 34px rgba(0, 0, 0, 0.35);
-}
-.search-icon { color: var(--gold-dim); flex-shrink: 0; }
+.search-box:focus-within { border-color: var(--accent); }
 .search-box input {
   flex: 1;
   min-width: 0;
@@ -163,40 +138,40 @@ body::before {
   outline: none;
   color: var(--text);
   font-family: inherit;
-  font-size: 15px;
-  letter-spacing: 0.5px;
-  padding: 8px 0;
+  font-size: 17px;
+  letter-spacing: 1px;
+  padding: 4px 0;
 }
 .search-box input::placeholder { color: var(--text-faint); }
 .search-box button {
-  background: var(--gold);
+  background: var(--text);
   border: none;
-  border-radius: 9px;
-  color: #1a150b;
-  font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
-  font-size: 14px;
-  letter-spacing: 3px;
-  padding: 9px 22px;
+  border-radius: 22px;
+  color: #0a0a0c;
+  font-family: inherit;
+  font-size: 13px;
+  letter-spacing: 2px;
+  padding: 10px 26px;
   cursor: pointer;
-  transition: background 0.2s, box-shadow 0.2s;
+  transition: all 0.25s;
 }
-.search-box button:hover { background: var(--gold-light); box-shadow: 0 4px 18px rgba(216, 161, 59, 0.35); }
-.search-box button:disabled { opacity: 0.5; cursor: not-allowed; }
+.search-box button:hover { background: var(--accent); transform: translateY(-1px); }
+.search-box button:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
 
 /* ---- 状态 ---- */
 .status {
   text-align: center;
-  padding: 26px 0 8px;
+  padding: 40px 0 8px;
   color: var(--text-dim);
   font-size: 13px;
   letter-spacing: 1px;
 }
-.status p { margin-top: 10px; }
+.status p { margin-top: 12px; }
 .spinner {
-  width: 30px; height: 30px;
+  width: 26px; height: 26px;
   margin: 0 auto;
   border: 1.5px solid var(--line);
-  border-top-color: var(--gold);
+  border-top-color: var(--accent);
   border-radius: 50%;
   animation: spin 0.9s linear infinite;
 }
@@ -206,10 +181,10 @@ body::before {
   color: var(--text-dim);
   font-size: 12px;
   letter-spacing: 2px;
-  margin: 30px 0 6px;
-  padding-left: 4px;
+  margin: 36px 0 4px;
+  padding-left: 2px;
 }
-.result-meta b { color: var(--gold); font-weight: 600; }
+.result-meta b { color: var(--accent); font-weight: 600; }
 
 /* ---- 歌曲列表（档案行） ---- */
 .song-list {
@@ -220,41 +195,39 @@ body::before {
 .song {
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 15px 4px;
+  gap: 16px;
+  padding: 14px 2px;
   border-bottom: 1px solid var(--line);
-  transition: background 0.2s;
-  position: relative;
+  transition: background 0.25s;
 }
-.song:hover { background: rgba(216, 161, 59, 0.04); }
+.song:hover { background: rgba(255, 255, 255, 0.025); }
 
 .song-disc {
-  width: 52px;
-  height: 52px;
+  width: 46px;
+  height: 46px;
   border-radius: 50%;
   flex-shrink: 0;
-  background: #211c12 center/cover no-repeat;
-  border: 1px solid var(--line-strong);
-  box-shadow: inset 0 0 0 3px rgba(20, 17, 11, 0.85), inset 0 0 0 4px var(--line);
+  background: #141418 center/cover no-repeat;
+  border: 1px solid var(--line);
   position: relative;
-  transition: transform 0.4s ease;
+  transition: transform 0.45s ease;
 }
-.song:hover .song-disc { transform: rotate(-8deg) scale(1.04); }
+.song:hover .song-disc { transform: rotate(-14deg) scale(1.05); }
 .song-disc::after {
   content: "";
   position: absolute;
   left: 50%; top: 50%;
-  width: 8px; height: 8px;
-  margin: -4px 0 0 -4px;
+  width: 7px; height: 7px;
+  margin: -3.5px 0 0 -3.5px;
   border-radius: 50%;
   background: var(--bg);
-  border: 1px solid var(--gold-dim);
+  border: 1px solid var(--text-faint);
 }
 
 .song-body { flex: 1; min-width: 0; }
 .song-name {
-  font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
-  font-size: 16px;
+  font-size: 15.5px;
+  font-weight: 600;
   color: var(--text);
   letter-spacing: 0.5px;
   white-space: nowrap;
@@ -270,7 +243,7 @@ body::before {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.song-meta .sep { margin: 0 7px; color: var(--line-strong); }
+.song-meta .sep { margin: 0 8px; color: var(--line-strong); }
 
 .song-actions {
   display: flex;
@@ -279,19 +252,19 @@ body::before {
   flex-shrink: 0;
 }
 .song-play {
-  width: 38px; height: 38px;
+  width: 36px; height: 36px;
   border-radius: 50%;
   background: transparent;
   border: 1px solid var(--line-strong);
-  color: var(--gold);
+  color: var(--text);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: all 0.22s;
 }
-.song-play:hover { background: var(--gold); color: #1a150b; box-shadow: 0 0 16px rgba(216, 161, 59, 0.3); }
-.song-play.playing { background: var(--gold); color: #1a150b; }
+.song-play:hover { background: var(--text); color: #0a0a0c; border-color: var(--text); }
+.song-play.playing { background: var(--text); color: #0a0a0c; border-color: var(--text); }
 
 .q-btn {
   background: transparent;
@@ -312,14 +285,14 @@ body::before {
 }
 .q-label { letter-spacing: 1px; }
 .q-size { font-size: 10px; color: var(--text-faint); }
-.q-btn:hover:not(:disabled) { border-color: var(--line-strong); color: var(--gold); }
-.q-btn:hover .q-size { color: var(--gold-dim); }
-.q-btn.downloading { border-color: var(--gold); color: var(--gold); }
-.q-btn.downloading .q-size { color: var(--gold); }
-.q-btn.done { border-color: var(--ok); color: var(--ok); }
-.q-btn.done .q-size { color: var(--ok); }
-.q-btn.error { border-color: var(--danger); color: var(--danger); }
-.q-btn.unavailable { opacity: 0.35; cursor: not-allowed; }
+.q-btn:hover:not(:disabled) { border-color: var(--line-strong); color: var(--text); }
+.q-btn:hover .q-size { color: var(--text-dim); }
+.q-btn.downloading { border-color: var(--accent); color: var(--accent); }
+.q-btn.downloading .q-size { color: var(--accent); }
+.q-btn.done { border-color: #8fb78f; color: #8fb78f; }
+.q-btn.done .q-size { color: #8fb78f; }
+.q-btn.error { border-color: #d97a5f; color: #d97a5f; }
+.q-btn.unavailable { opacity: 0.3; cursor: not-allowed; }
 .q-btn:disabled { cursor: default; }
 
 .progress-bar {
@@ -331,20 +304,20 @@ body::before {
 }
 .progress-bar .fill {
   height: 100%;
-  background: linear-gradient(90deg, var(--gold-dim), var(--gold));
+  background: var(--accent);
   transition: width 0.2s;
 }
 
 .error-msg {
   margin-top: 8px;
-  color: var(--danger);
+  color: #d97a5f;
   font-size: 12px;
   letter-spacing: 0.5px;
 }
 
 /* ---- 页脚 ---- */
 .footer {
-  margin-top: 56px;
+  margin-top: 64px;
   text-align: center;
   color: var(--text-faint);
   font-size: 11px;
@@ -358,60 +331,89 @@ body::before {
   transform: translateX(-50%);
   bottom: 0;
   width: 100%;
-  max-width: 720px;
-  background: rgba(19, 17, 12, 0.97);
+  max-width: 780px;
+  background:
+    radial-gradient(ellipse 70% 140% at 50% 135%, var(--accent-soft), transparent 72%),
+    rgba(12, 12, 15, 0.94);
   border-top: 1px solid var(--line-strong);
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 14px 20px;
+  gap: 18px;
+  padding: 14px 22px;
   z-index: 50;
-}
-.player::before {
-  content: "";
-  position: absolute;
-  top: -1px; left: 0; right: 0;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, var(--gold), transparent);
-  opacity: 0.8;
+  transition: background 1.2s ease;
 }
 .player.hidden { display: none; }
 
+.player-now { position: relative; flex-shrink: 0; }
 .player-disc {
   width: 58px;
   height: 58px;
   border-radius: 50%;
-  flex-shrink: 0;
-  background: #211c12 center/cover no-repeat;
-  border: 1px solid var(--gold-dim);
-  box-shadow: inset 0 0 0 4px rgba(20, 17, 11, 0.9), inset 0 0 0 5px var(--line-strong);
+  background: #141418 center/cover no-repeat;
+  border: 1px solid var(--line-strong);
+  box-shadow: inset 0 0 0 4px rgba(10, 10, 12, 0.92), inset 0 0 0 5px var(--line);
   position: relative;
+  transition: border-color 1s, box-shadow 1s;
 }
-.player-disc.spinning { animation: discspin 26s linear infinite; }
+.player-disc.spinning { animation: discspin 24s linear infinite; }
 @keyframes discspin { to { transform: rotate(360deg); } }
 .disc-hole {
   position: absolute;
   left: 50%; top: 50%;
-  width: 10px; height: 10px;
-  margin: -5px 0 0 -5px;
+  width: 9px; height: 9px;
+  margin: -4.5px 0 0 -4.5px;
   border-radius: 50%;
   background: var(--bg);
-  border: 1px solid var(--gold-dim);
+  border: 1px solid var(--text-faint);
+}
+
+/* 唱针：播放时落下，暂停抬起 */
+.tonearm {
+  position: absolute;
+  top: 2px;
+  right: -16px;
+  width: 46px;
+  height: 46px;
+  pointer-events: none;
+  transform-origin: 90% 6%;
+  transform: rotate(28deg);
+  transition: transform 0.55s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 3;
+}
+.player.playing .tonearm { transform: rotate(-2deg); }
+.arm-rod {
+  position: absolute;
+  left: 44%; top: 6%;
+  width: 2px;
+  height: 42px;
+  background: linear-gradient(180deg, #d8d8de, #7a7a84);
+  transform: rotate(-24deg);
+  transform-origin: 0 0;
+  border-radius: 1px;
+}
+.arm-head {
+  position: absolute;
+  left: 38%; top: 34%;
+  width: 8px; height: 10px;
+  background: linear-gradient(180deg, #e2e2e8, #8a8a94);
+  border-radius: 2px;
+  transform: rotate(-24deg);
 }
 
 .player-info { flex: 1; min-width: 0; }
 .player-name {
-  font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
   font-size: 14px;
+  font-weight: 600;
   color: var(--text);
-  letter-spacing: 1px;
+  letter-spacing: 0.5px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .player-singer {
   font-size: 11px;
-  color: var(--gold-dim);
+  color: var(--text-faint);
   letter-spacing: 1px;
   margin-top: 2px;
   white-space: nowrap;
@@ -430,8 +432,8 @@ body::before {
   height: 100%;
   width: 0%;
   border-radius: 2px;
-  background: linear-gradient(90deg, var(--gold-dim), var(--gold-light));
-  box-shadow: 0 0 10px rgba(216, 161, 59, 0.4);
+  background: var(--accent);
+  transition: background 1s;
 }
 .player-time {
   display: flex;
@@ -447,16 +449,16 @@ body::before {
   flex-shrink: 0;
   width: 46px; height: 46px;
   border-radius: 50%;
-  background: var(--gold);
+  background: var(--text);
   border: none;
-  color: #1a150b;
+  color: #0a0a0c;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: all 0.2s;
 }
-.player-play:hover { background: var(--gold-light); box-shadow: 0 0 20px rgba(216, 161, 59, 0.4); }
+.player-play:hover { background: var(--accent); }
 
 .player-close {
   flex-shrink: 0;
@@ -471,19 +473,21 @@ body::before {
   justify-content: center;
   transition: all 0.18s;
 }
-.player-close:hover { border-color: var(--danger); color: var(--danger); }
+.player-close:hover { border-color: #d97a5f; color: #d97a5f; }
 
 /* ---- 响应式 ---- */
-@media (max-width: 520px) {
-  .app { padding: 0 14px 140px; }
-  .header { padding: 18px 0 16px; }
+@media (max-width: 560px) {
+  .app { padding: 0 16px 140px; }
+  .header { padding: 20px 0 18px; }
   .brand-en { display: none; }
-  .hero { padding: 56px 0 34px; }
-  .hero-title { letter-spacing: 6px; }
-  .song { gap: 11px; padding: 13px 2px; }
-  .song-disc { width: 46px; height: 46px; }
+  .hero { padding: 60px 0 44px; }
+  .search-box { margin-top: 40px; }
+  .song { gap: 12px; padding: 13px 0; }
+  .song-disc { width: 42px; height: 42px; }
   .song-actions { gap: 6px; }
-  .q-btn { min-width: 60px; padding: 6px 8px; }
-  .player { gap: 12px; padding: 12px 14px; }
+  .q-btn { min-width: 58px; padding: 6px 8px; }
+  .player { gap: 13px; padding: 12px 14px; }
   .player-disc { width: 50px; height: 50px; }
+  .tonearm { right: -12px; transform: scale(0.9) rotate(28deg); transform-origin: 90% 6%; }
+  .player.playing .tonearm { transform: scale(0.9) rotate(-2deg); }
 }

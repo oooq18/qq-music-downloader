@@ -3,6 +3,7 @@ const searchBtn = document.getElementById("searchBtn");
 const statusEl = document.getElementById("status");
 const metaEl = document.getElementById("resultMeta");
 const listEl = document.getElementById("songList");
+const headerStatus = document.getElementById("headerStatus");
 
 const QUALITY_LABELS = { flac: "FLAC 无损", 320: "320kbps", 128: "128kbps" };
 const QUALITY_SIZE_KEYS = { flac: "sizeflac", 320: "size320", 128: "size128" };
@@ -41,11 +42,90 @@ function escapeHtml(str) {
   }[c]));
 }
 
+// ---- 封面取色：从专辑封面提取主色，驱动页面氛围光 ----
+function rgbToHsl(r, g, b) {
+  r /= 255; g /= 255; b /= 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  let h = 0, s = 0;
+  const l = (max + min) / 2;
+  if (max !== min) {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+    else if (max === g) h = ((b - r) / d + 2) / 6;
+    else h = ((r - g) / d + 4) / 6;
+  }
+  return [h, s, l];
+}
+function hslToRgb(h, s, l) {
+  let r, g, b;
+  if (s === 0) { r = g = b = l; }
+  else {
+    const hue2rgb = (p, q, t) => {
+      if (t < 0) t += 1;
+      if (t > 1) t -= 1;
+      if (t < 1 / 6) return p + (q - p) * 6 * t;
+      if (t < 1 / 2) return q;
+      if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+      return p;
+    };
+    const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+    const p = 2 * l - q;
+    r = hue2rgb(p, q, h + 1 / 3);
+    g = hue2rgb(p, q, h);
+    b = hue2rgb(p, q, h - 1 / 3);
+  }
+  return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+}
+function extractPalette(img) {
+  const size = 24;
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(img, 0, 0, size, size);
+  const data = ctx.getImageData(0, 0, size, size).data;
+  let r = 0, g = 0, b = 0, n = 0;
+  for (let i = 0; i < data.length; i += 4) {
+    if (data[i + 3] < 128) continue;
+    const R = data[i], G = data[i + 1], B = data[i + 2];
+    const lum = 0.2126 * R + 0.7152 * G + 0.0722 * B;
+    if (lum < 20 || lum > 240) continue; // 剔除纯黑纯白
+    const sat = Math.max(R, G, B) - Math.min(R, G, B);
+    const w = 1 + sat / 255; // 高饱和像素加权
+    r += R * w; g += G * w; b += B * w; n += w;
+  }
+  if (!n) { r = 210; g = 210; b = 218; }
+  else { r /= n; g /= n; b /= n; }
+
+  // 氛围色：保持色相，提亮提饱和（保证在深色背景上可见）
+  const [h, s, l] = rgbToHsl(r, g, b);
+  const amb = hslToRgb(h, Math.min(s * 0.7 + 0.18, 0.5), 0.52);
+  const softBase = hslToRgb(h, Math.min(s * 0.6 + 0.12, 0.42), 0.42);
+
+  return {
+    accent: "rgb(" + Math.round(r * 0.85) + "," + Math.round(g * 0.85) + "," + Math.round(b * 0.85) + ")",
+    soft: "rgba(" + amb[0] + "," + amb[1] + "," + amb[2] + ",0.30)",
+    glow: "rgba(" + softBase[0] + "," + softBase[1] + "," + softBase[2] + ",0.15)",
+  };
+}
+function applyTheme(color) {
+  if (!color) return;
+  const root = document.documentElement.style;
+  root.setProperty("--accent", color.accent);
+  root.setProperty("--accent-soft", color.soft);
+  root.setProperty("--accent-glow", color.glow);
+}
+function coverOf(song) {
+  return song && song.albummid ? API_BASE + "/api/cover?albummid=" + encodeURIComponent(song.albummid) : "";
+}
+
 async function handleSearch() {
   const kw = keywordEl.value.trim();
   if (!kw) return;
   searchBtn.disabled = true;
   searchBtn.textContent = "搜索中...";
+  headerStatus.textContent = "SEARCHING";
   statusEl.innerHTML = '<div class="spinner"></div><p>正在搜索...</p>';
   metaEl.textContent = "";
   listEl.innerHTML = "";
@@ -55,14 +135,25 @@ async function handleSearch() {
     const data = await res.json();
     if (!data.items || data.items.length === 0) {
       statusEl.innerHTML = "<p>没有找到相关歌曲，换个关键词试试</p>";
+      headerStatus.textContent = "EMPTY";
       return;
     }
     statusEl.innerHTML = "";
     metaEl.innerHTML = "共找到 <b>" + data.total + "</b> 首歌曲";
     currentSongs = data.items;
     renderSongs(currentSongs);
+    // 用首曲封面驱动页面氛围
+    const first = currentSongs[0];
+    if (first && first.albummid) {
+      const img = new Image();
+      img.onload = () => { try { applyTheme(extractPalette(img)); } catch (_) {} };
+      img.src = coverOf(first);
+    }
+    headerStatus.textContent = "FOUND " + data.total;
+    headerStatus.classList.add("live");
   } catch (err) {
     statusEl.innerHTML = "<p>搜索失败：" + escapeHtml(err.message) + "</p>";
+    headerStatus.textContent = "ERROR";
   } finally {
     searchBtn.disabled = false;
     searchBtn.textContent = "搜索";
@@ -82,9 +173,9 @@ function renderSongs(songs) {
     if (song.albummid) {
       const img = new Image();
       img.onload = () => {
-        disc.style.backgroundImage = "url(" + API_BASE + "/api/cover?albummid=" + encodeURIComponent(song.albummid) + ")";
+        disc.style.backgroundImage = "url(" + coverOf(song) + ")";
       };
-      img.src = API_BASE + "/api/cover?albummid=" + encodeURIComponent(song.albummid);
+      img.src = coverOf(song);
     }
     card.appendChild(disc);
 
@@ -328,16 +419,19 @@ async function togglePlay(song, btn) {
     audio.addEventListener("play", () => {
       playerPlay.innerHTML = ICON_PAUSE;
       playerCover.classList.add("spinning");
+      playerEl.classList.add("playing");
       highlightPlayBtn(song.songmid);
     });
     audio.addEventListener("pause", () => {
       playerPlay.innerHTML = ICON_PLAY;
       playerCover.classList.remove("spinning");
+      playerEl.classList.remove("playing");
       highlightPlayBtn(song.songmid);
     });
     audio.addEventListener("ended", () => {
       playerPlay.innerHTML = ICON_PLAY;
       playerCover.classList.remove("spinning");
+      playerEl.classList.remove("playing");
       highlightPlayBtn(song.songmid);
       playerFill.style.width = "0%";
       playerCur.textContent = "00:00";
@@ -355,11 +449,13 @@ async function togglePlay(song, btn) {
     playerSinger.textContent = song.singer || "未知歌手";
     playerCover.style.backgroundImage = "";
 
-    if (song.albummid) {
-      const coverUrl = API_BASE + "/api/cover?albummid=" + encodeURIComponent(song.albummid);
+    const coverUrl = coverOf(song);
+    if (coverUrl) {
       const img = new Image();
       img.onload = () => {
         playerCover.style.backgroundImage = "url(" + coverUrl + ")";
+        // 播放时整页氛围色随封面变化
+        try { applyTheme(extractPalette(img)); } catch (_) {}
       };
       img.src = coverUrl;
     }
@@ -384,6 +480,7 @@ playerClose.addEventListener("click", () => {
   if (audio) { audio.pause(); audio.src = ""; }
   currentSong = null;
   playerEl.classList.add("hidden");
+  playerEl.classList.remove("playing");
   playerCover.classList.remove("spinning");
   highlightPlayBtn("");
   playerFill.style.width = "0%";
