@@ -372,7 +372,7 @@ async function ncSearch(keyword, page = 1, pageSize = 20, env = {}) {
 
 // ---- 网易云：eapi 播放地址 ----
 async function ncGetPlayUrl(id, quality, env = {}) {
-  const level = quality === "flac" ? "lossless" : quality === "320" ? "exhigh" : "standard";
+  const level = quality === "hires" ? "hires" : quality === "flac" ? "lossless" : quality === "320" ? "exhigh" : "standard";
   const payload = {
     ids: [id],
     level,
@@ -461,7 +461,7 @@ export default {
       }
       if (url.pathname === "/api/music/download") {
         const songmid = url.searchParams.get("songmid") || url.searchParams.get("hash") || "";
-        const quality = ["flac", "320", "128"].includes(url.searchParams.get("quality"))
+        const quality = ["hires", "flac", "320", "128"].includes(url.searchParams.get("quality"))
           ? url.searchParams.get("quality")
           : "320";
         const source = url.searchParams.get("source") || "qq";

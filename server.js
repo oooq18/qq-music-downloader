@@ -77,7 +77,7 @@ async function ncSearch(keyword, page = 1, pageSize = 20) {
 
 // ---- 网易云：eapi 播放地址 ----
 async function ncGetPlayUrl(id, quality) {
-  const level = quality === "flac" ? "lossless" : quality === "320" ? "exhigh" : "standard";
+  const level = quality === "hires" ? "hires" : quality === "flac" ? "lossless" : quality === "320" ? "exhigh" : "standard";
   const payload = {
     ids: [id],
     level,
@@ -269,7 +269,7 @@ app.get("/api/music/search", async (req, res) => {
 app.get("/api/music/download", async (req, res) => {
   try {
     const id = String(req.query.songmid || req.query.hash || "");
-    const q = ["flac", "320", "128"].includes(req.query.quality) ? req.query.quality : "320";
+    const q = ["hires", "flac", "320", "128"].includes(req.query.quality) ? req.query.quality : "320";
     const source = String(req.query.source || "qq");
     if (!id) return res.status(400).json({ message: "songmid 不能为空" });
     if (source === "netease") {

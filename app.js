@@ -12,11 +12,35 @@ let currentSongs = [];
 let source = "qq"; // 当前音乐源：qq | netease
 let ncAuthed = false; // 网易云会员登录态
 
-// 初始化时探测网易云登录状态
-fetch(API_BASE + "/api/health")
-  .then((r) => r.json())
-  .then((j) => { ncAuthed = Boolean(j.ncAuthed); })
-  .catch(() => {});
+// 初始化时探测网易云登录状态（失败重试 3 次，避免误判未登录）
+(function probeNc() {
+  let tries = 0;
+  const doProbe = () => {
+    fetch(API_BASE + "/api/health")
+      .then((r) => r.json())
+      .then((j) => {
+        ncAuthed = Boolean(j.ncAuthed);
+        updateNcStatus();
+      })
+      .catch(() => {
+        tries++;
+        if (tries < 3) setTimeout(doProbe, 1200);
+      });
+  };
+  doProbe();
+})();
+
+function updateNcStatus() {
+  const el = document.getElementById("ncStatus");
+  if (!el) return;
+  if (source === "netease") {
+    el.textContent = ncAuthed ? "黑胶会员已解锁" : "未登录，仅免费歌曲";
+    el.classList.toggle("on", ncAuthed);
+    el.style.display = "";
+  } else {
+    el.style.display = "none";
+  }
+}
 
 // ---- 音乐源切换 ----
 document.querySelectorAll(".src-btn").forEach((btn) => {
@@ -24,6 +48,7 @@ document.querySelectorAll(".src-btn").forEach((btn) => {
     const next = btn.dataset.source;
     if (next === source) return;
     source = next;
+    updateNcStatus();
     document.querySelectorAll(".src-btn").forEach((b) => {
       const on = b === btn;
       b.classList.toggle("active", on);
@@ -290,10 +315,13 @@ const dlRows = document.getElementById("dlRows");
 let panelSong = null;
 
 const QUALITY_DESC = {
-  flac: { label: "FLAC 无损", tag: "无损" },
-  320: { label: "320kbps", tag: "高清" },
-  128: { label: "128kbps", tag: "试听" },
+  hires: { label: "Hi-Res", tag: "Hi-Res" },
+  flac: { label: "无损 FLAC", tag: "无损" },
+  320: { label: "极高 320kbps", tag: "极高" },
+  128: { label: "标准 128kbps", tag: "标准" },
 };
+const NC_QUAL_ORDER = ["hires", "flac", "320", "128"]; // 网易云音质档位（黑胶会员全解锁）
+const QQ_QUAL_ORDER = ["flac", "320", "128"];
 
 function openDlPanel(song) {
   panelSong = song;
@@ -326,7 +354,10 @@ function closeDlPanel() {
 function renderDlRows() {
   if (!panelSong) return;
   dlRows.innerHTML = "";
-  const quals = ["flac", "320", "128"];
+  // 网易云按网易云音质档位（未登录时去掉 Hi-Res），QQ 保持原档位
+  const quals = panelSong.source === "netease"
+    ? (ncAuthed ? NC_QUAL_ORDER : NC_QUAL_ORDER.filter((q) => q !== "hires"))
+    : QQ_QUAL_ORDER;
   quals.forEach((q, i) => {
     const row = renderDlRow(panelSong, q);
     row.style.animationDelay = (0.06 + i * 0.07).toFixed(2) + "s";
@@ -518,7 +549,7 @@ async function startDownload(song, q) {
     const meta = { title: song.songname, artist: song.singer, album: song.albumname, lyric: lyricText };
     // 按实际文件扩展名判定格式（网易云部分"无损"源实为 320，避免写错 ID3 破坏文件）
     const extMatch = (data.url || "").match(/\.(flac|mp3|m4a|aac)(\?|$)/i);
-    const actualFlac = extMatch ? extMatch[1].toLowerCase() === "flac" : q === "flac" && data.level === "lossless";
+    const actualFlac = extMatch ? extMatch[1].toLowerCase() === "flac" : (q === "flac" || q === "hires") && data.level !== "exhigh";
     const finalBytes = await window.embedMetaToBytes(audioBytes, actualFlac ? "flac" : "mp3", meta, coverBlob);
     const type = actualFlac ? "audio/flac" : "audio/mpeg";
     statusEl.innerHTML = "";
