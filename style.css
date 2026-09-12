@@ -600,6 +600,49 @@ body {
   color: rgba(255, 255, 255, 0.4);
 }
 
+/* ---- 横屏 / 宽屏：左封面右歌词（Apple Music 分栏） ---- */
+@media (orientation: landscape) {
+  .now-playing {
+    display: grid;
+    grid-template-columns: minmax(300px, 42%) 1fr;
+    grid-template-rows: auto auto auto auto auto;
+    align-content: center;
+    padding: 18px 36px 24px;
+  }
+  .np-handle { display: none; }
+  .np-header { grid-column: 1 / -1; grid-row: 1; }
+  .np-cover-wrap {
+    grid-column: 1; grid-row: 2;
+    padding: 20px 0 14px;
+    align-self: end;
+  }
+  .np-cover {
+    width: min(38vh, 330px);
+    height: min(38vh, 330px);
+  }
+  .np-info { grid-column: 1; grid-row: 3; align-self: start; }
+  .np-progress { grid-column: 1; grid-row: 4; margin-top: 18px; }
+  .np-controls { grid-column: 1; grid-row: 5; margin-top: 12px; }
+  .np-lyrics-wrap {
+    grid-column: 2; grid-row: 2 / 6;
+    margin-top: 0;
+    align-self: center;
+    min-height: 0;
+    height: 100%;
+  }
+  .lyric-line { font-size: 18px; padding: 11px 0; }
+  .lyric-line.active { font-size: 22px; }
+  .np-time { font-size: 12.5px; }
+}
+
+@media (orientation: landscape) and (max-width: 760px) {
+  .now-playing { padding: 14px 20px 20px; grid-template-columns: 46% 1fr; }
+  .np-cover { width: min(36vh, 240px); height: min(36vh, 240px); }
+  .np-name { font-size: 19px; }
+  .lyric-line { font-size: 15px; padding: 8px 0; }
+  .lyric-line.active { font-size: 18px; }
+}
+
 /* ============================================================
    音质选择面板
    ============================================================ */
