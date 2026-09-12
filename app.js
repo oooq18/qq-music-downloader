@@ -38,7 +38,6 @@ const npFill = document.getElementById("npFill");
 const npCur = document.getElementById("npCur");
 const npDur = document.getElementById("npDur");
 const npPlay = document.getElementById("npPlay");
-const npClose = document.getElementById("npClose");
 const npHandle = document.getElementById("npHandle");
 const npTrack = document.getElementById("npTrack");
 const lyricsEl = document.getElementById("lyricsEl");
@@ -399,7 +398,9 @@ function syncListenBtn() {
 document.getElementById("dlClose").addEventListener("click", closeDlPanel);
 document.getElementById("dlMask").addEventListener("click", closeDlPanel);
 document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape") closeDlPanel();
+  if (e.key !== "Escape") return;
+  if (!npEl.classList.contains("hidden")) closeNowPlaying();
+  else closeDlPanel();
 });
 
 async function startDownload(song, q) {
@@ -758,7 +759,6 @@ function closeNowPlaying() {
   }, 300);
 }
 playerBody.addEventListener("click", openNowPlaying);
-npClose.addEventListener("click", closeNowPlaying);
 npHandle.addEventListener("click", closeNowPlaying);
 
 playerPlay.addEventListener("click", () => {
