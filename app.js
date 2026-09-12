@@ -802,7 +802,7 @@ function endNpDrag() {
   if (!npDragging) return;
   npDragging = false;
   npEl.classList.remove("dragging");
-  npEl.style.transition = "transform 0.3s cubic-bezier(0.33, 1, 0.68, 1)";
+  npEl.style.transition = "transform 0.28s cubic-bezier(0.215, 0.61, 0.355, 1)";
   if (npDragDy >= NP_DRAG_THRESHOLD) {
     // 超过阈值：滑出屏幕关闭
     npEl.style.transform = "translateY(110%)";
