@@ -203,6 +203,39 @@ app.get("/api/lyric", async (req, res) => {
       try { trans = decodeURIComponent(escape(Buffer.from(lj.trans, "base64").toString("binary"))); }
       catch (_) { trans = ""; }
     }
+    // QQ 无翻译时从网易云兜底
+    if (!trans) {
+      const name = String(req.query.name || "");
+      const singer = String(req.query.singer || "");
+      if (name) {
+        try {
+          const sr = await fetch(
+            "https://music.163.com/api/search/get/web?s=" + encodeURIComponent(name + (singer ? " " + singer : "")) + "&type=1&offset=0&limit=5",
+            { headers: { Referer: "https://music.163.com", "User-Agent": UA } }
+          );
+          const sj = await sr.json();
+          const songs = (sj.result && sj.result.songs) || [];
+          let sid = null;
+          const n2 = name.toLowerCase();
+          const sn = singer.toLowerCase();
+          for (const s of songs) {
+            const n1 = (s.name || "").toLowerCase();
+            const ar = ((s.artists || []).map((a) => a.name).join(" ") || "").toLowerCase();
+            if (n1 === n2 || n1.includes(n2) || n2.includes(n1)) { sid = s.id; break; }
+            if (!sid && (!sn || ar.includes(sn))) sid = s.id;
+          }
+          if (!sid && songs.length) sid = songs[0].id;
+          if (sid) {
+            const tl = await fetch(
+              "https://music.163.com/api/song/lyric?id=" + sid + "&lv=-1&kv=-1&tv=-1",
+              { headers: { Referer: "https://music.163.com", "User-Agent": UA } }
+            );
+            const tj = await tl.json();
+            trans = (tj.tlyric && tj.tlyric.lyric) || "";
+          }
+        } catch (_) { /* 网易云兜底失败不影响主流程 */ }
+      }
+    }
     res.json({ lyric, trans });
   } catch (err) {
     res.status(500).json({ message: err.message || "歌词获取失败" });

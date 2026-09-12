@@ -151,6 +151,41 @@ async function getLyric(songmid) {
   return { lyric, trans };
 }
 
+// QQ 无翻译时，从网易云搜索同名歌曲并取 tlyric（翻译歌词）兜底
+async function getNeteaseTrans(name, singer) {
+  if (!name) return "";
+  try {
+    const q = encodeURIComponent(name + (singer ? " " + singer : ""));
+    const sr = await fetch(
+      "https://music.163.com/api/search/get/web?s=" + q + "&type=1&offset=0&limit=5",
+      { headers: { Referer: "https://music.163.com", "User-Agent": UA } }
+    );
+    if (!sr.ok) return "";
+    const sj = await sr.json();
+    const songs = (sj.result && sj.result.songs) || [];
+    let sid = null;
+    const n2 = (name || "").toLowerCase();
+    const sn = (singer || "").toLowerCase();
+    for (const s of songs) {
+      const n1 = (s.name || "").toLowerCase();
+      const ar = ((s.artists || []).map((a) => a.name).join(" ") || "").toLowerCase();
+      if (n1 === n2 || n1.includes(n2) || n2.includes(n1)) { sid = s.id; break; }
+      if (!sid && (!sn || ar.includes(sn))) sid = s.id;
+    }
+    if (!sid && songs.length) sid = songs[0].id;
+    if (!sid) return "";
+    const lr = await fetch(
+      "https://music.163.com/api/song/lyric?id=" + sid + "&lv=-1&kv=-1&tv=-1",
+      { headers: { Referer: "https://music.163.com", "User-Agent": UA } }
+    );
+    if (!lr.ok) return "";
+    const lj = await lr.json();
+    return (lj.tlyric && lj.tlyric.lyric) || "";
+  } catch (_) {
+    return "";
+  }
+}
+
 // 获取下载地址（ag-1 协议）
 async function getDownloadUrl(songmid, quality, env) {
   if (!env.QQ || !env.AUTHST) throw new Error("服务端未配置 QQ/AUTHST 登录态");
@@ -236,7 +271,14 @@ export default {
       if (url.pathname === "/api/lyric") {
         const songmid = url.searchParams.get("songmid") || "";
         if (!songmid) return json({ message: "songmid 不能为空" }, 400);
-        return json(await getLyric(songmid));
+        const data = await getLyric(songmid);
+        // QQ 无翻译时用网易云翻译兜底
+        if (!data.trans) {
+          const name = url.searchParams.get("name") || "";
+          const singer = url.searchParams.get("singer") || "";
+          data.trans = await getNeteaseTrans(name, singer);
+        }
+        return json(data);
       }
       return json({ message: "Not Found" }, 404);
     } catch (err) {

@@ -676,7 +676,9 @@ function updateLyrics(time) {
 async function loadLyrics(song) {
   renderLyrics([]);
   try {
-    const res = await fetch(API_BASE + "/api/lyric?songmid=" + encodeURIComponent(song.songmid));
+    const res = await fetch(API_BASE + "/api/lyric?songmid=" + encodeURIComponent(song.songmid)
+      + "&name=" + encodeURIComponent(song.songname || "")
+      + "&singer=" + encodeURIComponent(song.singer || ""));
     if (!res.ok) throw new Error("no lyric");
     const j = await res.json();
     const list = mergeSameTime(parseLrc(j.lyric));
