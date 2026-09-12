@@ -333,6 +333,28 @@ app.get("/api/lyric", async (req, res) => {
 
 // 健康检查
 app.get("/api/health", (req, res) => res.json({ ok: true, authed: Boolean(QQ && AUTHST), ncAuthed: Boolean(NC_COOKIE) }));
+// 音频代理：绕过 CDN 的 CORS 限制
+app.get("/api/stream", async (req, res) => {
+  try {
+    const target = String(req.query.url || "");
+    if (!/^https?:\/\/([\w-]+\.)*(music\.126\.net|y\.qq\.com|stream\.qqmusic\.qq\.com|qqmusic\.qq\.com)\//i.test(target)) {
+      return res.status(400).json({ ok: false, message: "仅允许音乐 CDN 地址" });
+    }
+    const r = await fetch(target, { headers: { "User-Agent": NC_UA, Referer: NC_REFERER } });
+    res.set("Access-Control-Allow-Origin", "*");
+    res.set("Content-Type", r.headers.get("content-type") || "application/octet-stream");
+    res.set("Content-Length", r.headers.get("content-length") || "");
+    const reader = r.body.getReader();
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      res.write(Buffer.from(value));
+    }
+    res.end();
+  } catch (err) {
+    res.status(502).json({ ok: false, message: "代理失败: " + err.message });
+  }
+});
 
 // 托管前端静态文件（部署到 Render 时一键全栈）
 const clientDir = path.join(__dirname, ".");

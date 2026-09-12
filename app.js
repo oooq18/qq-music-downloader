@@ -12,6 +12,12 @@ let currentSongs = [];
 let source = "qq"; // 当前音乐源：qq | netease
 let ncAuthed = false; // 网易云会员登录态
 
+// 音频地址统一走代理（网易云 CDN 无 CORS 头，浏览器无法直连）
+function streamUrl(u) {
+  if (!u) return u;
+  return (API_BASE || "") + "/api/stream?url=" + encodeURIComponent(u);
+}
+
 // 初始化时探测网易云登录状态（失败重试 3 次，避免误判未登录）
 (function probeNc() {
   let tries = 0;
@@ -481,7 +487,8 @@ document.addEventListener("keydown", (e) => {
 async function startDownload(song, q) {
   const key = song.songmid + "-" + q;
   const size = song[QUALITY_SIZE_KEYS[q]];
-  if (!size) return;
+  // 网易云搜索不返回文件大小（全 0），跳过大小拦截
+  if (!size && song.source !== "netease") return;
   if (downloadStates.get(key)?.status === "downloading") return;
 
   downloadStates.set(key, { status: "downloading", progress: 0 });
@@ -519,7 +526,7 @@ async function startDownload(song, q) {
     try { data = await dlRes.json(); } catch (_) {}
     if (!dlRes.ok || !data.url) throw new Error(data.message || "获取下载地址失败");
 
-    const streamRes = await fetch(data.url);
+    const streamRes = await fetch(streamUrl(data.url));
     if (!streamRes.ok) throw new Error("下载失败：" + streamRes.status);
     const total = Number(streamRes.headers.get("Content-Length")) || 0;
     const reader = streamRes.body.getReader();
@@ -770,7 +777,7 @@ async function togglePlay(song, btn) {
     if (!res.ok || !data.url) throw new Error(data.message || "获取播放地址失败");
 
     currentSong = song;
-    audio = new Audio(data.url);
+    audio = new Audio(streamUrl(data.url));
     audio.preload = "auto";
 
     audio.addEventListener("timeupdate", () => {

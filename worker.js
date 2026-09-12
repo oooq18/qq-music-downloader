@@ -450,6 +450,20 @@ export default {
       if (url.pathname === "/api/health") {
         return json({ ok: true, authed: Boolean(env.QQ && env.AUTHST), ncAuthed: Boolean(env.NC_COOKIE) });
       }
+      if (url.pathname === "/api/stream") {
+        // 音频代理：绕过 CDN 的 CORS 限制（网易云 CDN 无跨域头，浏览器无法直接拉流）
+        const target = url.searchParams.get("url") || "";
+        if (!/^https?:\/\/([\w-]+\.)*(music\.126\.net|y\.qq\.com|stream\.qqmusic\.qq\.com|qqmusic\.qq\.com)\//i.test(target)) {
+          return json({ ok: false, message: "仅允许音乐 CDN 地址" });
+        }
+        const res = await fetch(target, {
+          headers: { "User-Agent": NC_UA, Referer: NC_REFERER },
+        });
+        const headers = new Headers(res.headers);
+        headers.set("Access-Control-Allow-Origin", "*");
+        headers.set("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS");
+        return new Response(res.body, { status: res.status, headers });
+      }
       if (url.pathname === "/api/music/search") {
         const q = (url.searchParams.get("q") || "").trim();
         if (!q) return json({ message: "搜索关键词不能为空" }, 400);
