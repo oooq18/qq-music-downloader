@@ -58,6 +58,28 @@
     </button>
   </div>
 
+  <!-- 音质选择面板 -->
+  <div id="dlModal" class="dl-modal hidden" role="dialog" aria-label="选择音质">
+    <div class="dl-mask" id="dlMask"></div>
+    <div class="dl-panel">
+      <div class="dl-head">
+        <div class="dl-cover" id="dlCover"></div>
+        <div class="dl-info">
+          <div class="dl-name" id="dlName"></div>
+          <div class="dl-singer" id="dlSinger"></div>
+        </div>
+        <button class="dl-close" id="dlClose" aria-label="关闭">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>
+      <button class="dl-listen" id="dlListen">
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+        试听预览
+      </button>
+      <div class="dl-rows" id="dlRows"></div>
+    </div>
+  </div>
+
   <script src="config.js"></script>
   <script src="tags.js"></script>
   <script src="app.js"></script>

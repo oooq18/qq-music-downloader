@@ -209,54 +209,170 @@ function renderSongs(songs) {
     playBtn.addEventListener("click", () => togglePlay(song, playBtn));
     actions.appendChild(playBtn);
 
-    ["flac", "320", "128"].forEach((q) => {
-      actions.appendChild(renderQualityBtn(song, q));
-    });
+    const dlBtn = document.createElement("button");
+    dlBtn.className = "dl-open";
+    dlBtn.innerHTML = ICON_DL + " 下载";
+    dlBtn.title = "选择音质并下载";
+    dlBtn.addEventListener("click", () => openDlPanel(song));
+    actions.appendChild(dlBtn);
+
     card.appendChild(actions);
     listEl.appendChild(card);
   });
 }
 
-function renderQualityBtn(song, q) {
-  const key = song.songmid + "-" + q;
+// ---- 音质选择面板 ----
+const dlModal = document.getElementById("dlModal");
+const dlCover = document.getElementById("dlCover");
+const dlName = document.getElementById("dlName");
+const dlSinger = document.getElementById("dlSinger");
+const dlListen = document.getElementById("dlListen");
+const dlRows = document.getElementById("dlRows");
+let panelSong = null; // 面板当前歌曲
+let panelListenPlaying = false;
+
+const QUALITY_DESC = {
+  flac: { label: "FLAC 无损", tag: "无损" },
+  320: { label: "320kbps", tag: "高清" },
+  128: { label: "128kbps", tag: "试听" },
+};
+
+function openDlPanel(song) {
+  panelSong = song;
+  panelListenPlaying = false;
+  dlListen.classList.remove("listening");
+  dlListen.innerHTML = ICON_PLAY + " 试听预览";
+  dlName.textContent = song.songname;
+  dlSinger.textContent = song.singer || "未知歌手";
+  dlCover.style.backgroundImage = "";
+  const coverUrl = coverOf(song);
+  if (coverUrl) {
+    const img = new Image();
+    img.onload = () => { dlCover.style.backgroundImage = "url(" + coverUrl + ")"; };
+    img.src = coverUrl;
+  }
+  renderDlRows();
+  dlModal.classList.remove("hidden");
+}
+
+function closeDlPanel() {
+  dlModal.classList.add("hidden");
+  panelSong = null;
+  panelListenPlaying = false;
+}
+
+function renderDlRows() {
+  if (!panelSong) return;
+  dlRows.innerHTML = "";
+  ["flac", "320", "128"].forEach((q) => {
+    dlRows.appendChild(renderDlRow(panelSong, q));
+  });
+}
+
+function renderDlRow(song, q) {
   const size = song[QUALITY_SIZE_KEYS[q]];
-  const btn = document.createElement("button");
-  btn.className = "q-btn";
-  btn.dataset.key = key;
+  const key = song.songmid + "-" + q;
+  const row = document.createElement("button");
+  row.className = "dl-row";
+  row.dataset.key = key;
 
   const state = downloadStates.get(key);
   if (state && state.status === "downloading") {
-    btn.classList.add("downloading");
-    btn.disabled = true;
-    btn.innerHTML = '<span class="q-label">' + (state.progress || 0) + "%</span>";
+    row.classList.add("downloading");
+    row.disabled = true;
+    row.innerHTML =
+      '<span class="dl-q">' + QUALITY_DESC[q].label + "</span>" +
+      '<span class="dl-size">' + (size ? formatSize(size) : "") + "</span>" +
+      '<span class="dl-status">' + (state.progress || 0) + "%</span>" +
+      '<span class="dl-progress" style="width:' + (state.progress || 0) + '%"></span>';
   } else if (state && state.status === "done") {
-    btn.classList.add("done");
-    btn.disabled = true;
-    btn.innerHTML = '<span class="q-label">' + ICON_CHECK + " 已完成</span>";
+    row.classList.add("done");
+    row.disabled = true;
+    row.innerHTML =
+      '<span class="dl-q">' + QUALITY_DESC[q].label + "</span>" +
+      '<span class="dl-size">' + (size ? formatSize(size) : "") + "</span>" +
+      '<span class="dl-status">' + ICON_CHECK + " 已完成</span>";
   } else if (state && state.status === "error") {
-    btn.classList.add("error");
-    btn.title = state.error || "";
-    btn.innerHTML = '<span class="q-label">' + ICON_RETRY + ' 重试</span><span class="q-size">' + QUALITY_LABELS[q] + '</span>';
-    btn.onclick = () => startDownload(song, q);
+    row.classList.add("error");
+    row.title = state.error || "";
+    row.innerHTML =
+      '<span class="dl-q">' + QUALITY_DESC[q].label + "</span>" +
+      '<span class="dl-size">' + (size ? formatSize(size) : "") + "</span>" +
+      '<span class="dl-status">' + ICON_RETRY + " 重试</span>";
+    row.addEventListener("click", () => startDownload(song, q));
   } else if (!size) {
-    btn.classList.add("unavailable");
-    btn.disabled = true;
-    btn.title = "该音质不可用";
-    btn.innerHTML = '<span class="q-label">' + QUALITY_LABELS[q] + '</span><span class="q-size">暂无</span>';
+    row.classList.add("unavailable");
+    row.disabled = true;
+    row.title = "该音质不可用";
+    row.innerHTML =
+      '<span class="dl-q">' + QUALITY_DESC[q].label + "</span>" +
+      '<span class="dl-tag">' + QUALITY_DESC[q].tag + "</span>" +
+      '<span class="dl-size">暂无</span>' +
+      '<span class="dl-status">不可用</span>';
   } else {
-    btn.innerHTML =
-      '<span class="q-label">' + QUALITY_LABELS[q] + "</span>" +
-      '<span class="q-size">' + ICON_DL + " " + formatSize(size) + "</span>";
-    btn.onclick = () => startDownload(song, q);
+    row.innerHTML =
+      '<span class="dl-q">' + QUALITY_DESC[q].label + "</span>" +
+      '<span class="dl-tag">' + QUALITY_DESC[q].tag + "</span>" +
+      '<span class="dl-size">' + formatSize(size) + "</span>" +
+      '<span class="dl-status">' + ICON_DL + ' 下载</span>';
+    row.addEventListener("click", () => startDownload(song, q));
   }
-  return btn;
+  return row;
 }
 
-function replaceBtn(song, q) {
-  const old = document.querySelector('.q-btn[data-key="' + song.songmid + "-" + q + '"]');
-  if (!old || !old.parentNode) return;
-  old.parentNode.replaceChild(renderQualityBtn(song, q), old);
+function refreshDlRow(song, q) {
+  if (!panelSong || panelSong.songmid !== song.songmid) return;
+  const row = dlRows.querySelector('.dl-row[data-key="' + song.songmid + "-" + q + '"]');
+  if (row) row.parentNode.replaceChild(renderDlRow(song, q), row);
 }
+
+// 试听预览：复用播放器
+dlListen.addEventListener("click", async () => {
+  if (!panelSong) return;
+  // 若正在播这首歌，切换暂停
+  if (audio && currentSong && currentSong.songmid === panelSong.songmid) {
+    if (audio.paused) {
+      audio.play();
+      dlListen.innerHTML = ICON_PAUSE + " 停止试听";
+      dlListen.classList.add("listening");
+    } else {
+      audio.pause();
+      dlListen.innerHTML = ICON_PLAY + " 试听预览";
+      dlListen.classList.remove("listening");
+    }
+    return;
+  }
+  await togglePlay(panelSong, document.querySelector('.song-play[data-mid="' + panelSong.songmid + '"]'));
+  if (audio && currentSong && currentSong.songmid === panelSong.songmid && !audio.paused) {
+    dlListen.innerHTML = ICON_PAUSE + " 停止试听";
+    dlListen.classList.add("listening");
+  } else {
+    dlListen.innerHTML = ICON_PLAY + " 试听预览";
+    dlListen.classList.remove("listening");
+  }
+});
+
+// 播放器状态变化时同步试听按钮
+function syncListenBtn() {
+  if (!panelSong || !audio || !currentSong || currentSong.songmid !== panelSong.songmid) {
+    dlListen.innerHTML = ICON_PLAY + " 试听预览";
+    dlListen.classList.remove("listening");
+    return;
+  }
+  if (audio.paused) {
+    dlListen.innerHTML = ICON_PLAY + " 试听预览";
+    dlListen.classList.remove("listening");
+  } else {
+    dlListen.innerHTML = ICON_PAUSE + " 停止试听";
+    dlListen.classList.add("listening");
+  }
+}
+
+document.getElementById("dlClose").addEventListener("click", closeDlPanel);
+document.getElementById("dlMask").addEventListener("click", closeDlPanel);
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") closeDlPanel();
+});
 
 async function startDownload(song, q) {
   const key = song.songmid + "-" + q;
@@ -265,7 +381,8 @@ async function startDownload(song, q) {
   if (downloadStates.get(key)?.status === "downloading") return;
 
   downloadStates.set(key, { status: "downloading", progress: 0 });
-  replaceBtn(song, q);
+  refreshDlRow(song, q);
+  updateListDlBtn(song, q, 0);
 
   const card = document.querySelector('.song[data-mid="' + song.songmid + '"]');
   const oldErr = card.querySelector(".error-msg");
@@ -310,6 +427,7 @@ async function startDownload(song, q) {
         const pct = Math.min(99, Math.round((received / total) * 100));
         downloadStates.get(key).progress = pct;
         fill.style.width = pct + "%";
+        updateDownloadUi(song, q, pct);
       }
     }
 
@@ -328,7 +446,8 @@ async function startDownload(song, q) {
     statusEl.innerHTML = "";
 
     downloadStates.set(key, { status: "done" });
-    replaceBtn(song, q);
+    refreshDlRow(song, q);
+    updateListDlBtn(song, q, "done");
 
     // 4. 保存为本地文件（带封面和歌词）
     const blob = new Blob([finalBytes], { type });
@@ -342,16 +461,53 @@ async function startDownload(song, q) {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
 
-    setTimeout(() => { downloadStates.delete(key); replaceBtn(song, q); }, 3000);
+    setTimeout(() => { downloadStates.delete(key); refreshDlRow(song, q); updateListDlBtn(song, q, null); }, 3000);
   } catch (err) {
     downloadStates.set(key, { status: "error", error: err.message });
-    replaceBtn(song, q);
+    refreshDlRow(song, q);
+    updateListDlBtn(song, q, "error");
     const errDiv = document.createElement("div");
     errDiv.className = "error-msg";
     errDiv.textContent = "下载失败：" + err.message;
     card.appendChild(errDiv);
   } finally {
     bar.remove();
+  }
+}
+
+// 面板行与列表下载按钮的状态联动
+function updateDownloadUi(song, q, pct) {
+  const key = song.songmid + "-" + q;
+  if (panelSong && panelSong.songmid === song.songmid) {
+    const row = dlRows.querySelector('.dl-row[data-key="' + key + '"]');
+    if (row) {
+      row.classList.add("downloading");
+      const prog = row.querySelector(".dl-progress");
+      const st = row.querySelector(".dl-status");
+      if (prog) prog.style.width = pct + "%";
+      if (st) st.textContent = pct + "%";
+    }
+  }
+  updateListDlBtn(song, q, pct);
+}
+
+function updateListDlBtn(song, q, pct) {
+  const card = document.querySelector('.song[data-mid="' + song.songmid + '"]');
+  if (!card) return;
+  const btn = card.querySelector(".dl-open");
+  if (!btn) return;
+  if (pct === null) {
+    btn.innerHTML = ICON_DL + " 下载";
+    btn.classList.remove("busy");
+  } else if (pct === "done") {
+    btn.innerHTML = ICON_CHECK + " 已完成";
+    btn.classList.add("done");
+  } else if (pct === "error") {
+    btn.innerHTML = ICON_RETRY + " 重试";
+    btn.classList.add("error");
+  } else {
+    btn.innerHTML = pct + "%";
+    btn.classList.add("busy");
   }
 }
 
@@ -425,12 +581,14 @@ async function togglePlay(song, btn) {
       playerCover.classList.add("spinning");
       playerEl.classList.add("playing");
       highlightPlayBtn(song.songmid);
+      syncListenBtn();
     });
     audio.addEventListener("pause", () => {
       playerPlay.innerHTML = ICON_PLAY;
       playerCover.classList.remove("spinning");
       playerEl.classList.remove("playing");
       highlightPlayBtn(song.songmid);
+      syncListenBtn();
     });
     audio.addEventListener("ended", () => {
       playerPlay.innerHTML = ICON_PLAY;
@@ -439,12 +597,14 @@ async function togglePlay(song, btn) {
       highlightPlayBtn(song.songmid);
       playerFill.style.width = "0%";
       playerCur.textContent = "00:00";
+      syncListenBtn();
     });
     audio.addEventListener("error", () => {
       playerPlay.innerHTML = ICON_PLAY;
       playerCover.classList.remove("spinning");
       btn.innerHTML = ICON_PLAY;
       if (playBtnOf === btn) playBtnOf = null;
+      syncListenBtn();
     });
 
     // 更新播放器信息
@@ -490,6 +650,7 @@ playerClose.addEventListener("click", () => {
   playerFill.style.width = "0%";
   playerCur.textContent = "00:00";
   playerDur.textContent = "00:00";
+  syncListenBtn();
 });
 
 // 进度条点击跳转
