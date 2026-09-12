@@ -9,7 +9,7 @@ const QUALITY_LABELS = { flac: "FLAC 无损", 320: "320kbps", 128: "128kbps" };
 const QUALITY_SIZE_KEYS = { flac: "sizeflac", 320: "size320", 128: "size128" };
 const downloadStates = new Map();
 let currentSongs = [];
-let source = "qq"; // 当前音乐源：qq | kugou
+let source = "qq"; // 当前音乐源：qq | netease
 
 // ---- 音乐源切换 ----
 document.querySelectorAll(".src-btn").forEach((btn) => {
@@ -169,8 +169,8 @@ function applyCoverTheme(palette) {
 }
 function coverOf(song) {
   if (!song) return "";
-  if (song.source === "kugou") {
-    return song.hash ? API_BASE + "/api/cover?source=kugou&hash=" + encodeURIComponent(song.hash) : "";
+  if (song.source === "netease") {
+    return song.picUrl ? API_BASE + "/api/cover?source=netease&pic=" + encodeURIComponent(song.picUrl) : "";
   }
   return song.albummid ? API_BASE + "/api/cover?albummid=" + encodeURIComponent(song.albummid) : "";
 }
@@ -319,7 +319,7 @@ function closeDlPanel() {
 function renderDlRows() {
   if (!panelSong) return;
   dlRows.innerHTML = "";
-  const quals = panelSong.source === "kugou" ? ["128"] : ["flac", "320", "128"];
+  const quals = ["flac", "320", "128"];
   quals.forEach((q, i) => {
     const row = renderDlRow(panelSong, q);
     row.style.animationDelay = (0.06 + i * 0.07).toFixed(2) + "s";
@@ -358,15 +358,6 @@ function renderDlRow(song, q) {
       '<span class="dl-size">' + (size ? formatSize(size) : "") + "</span>" +
       '<span class="dl-status">' + ICON_RETRY + " 重试</span>";
     row.addEventListener("click", () => startDownload(song, q));
-  } else if (song.source === "kugou" && song.vip128) {
-    row.classList.add("unavailable");
-    row.disabled = true;
-    row.title = "酷狗 VIP 歌曲";
-    row.innerHTML =
-      '<span class="dl-q">' + QUALITY_DESC[q].label + "</span>" +
-      '<span class="dl-tag">酷狗VIP</span>' +
-      '<span class="dl-size">' + (size ? formatSize(size) : "") + "</span>" +
-      '<span class="dl-status">需VIP</span>';
   } else if (!size) {
     row.classList.add("unavailable");
     row.disabled = true;
@@ -461,8 +452,8 @@ async function startDownload(song, q) {
   const fill = bar.querySelector(".fill");
 
   try {
-    const dlParams = song.source === "kugou"
-      ? "source=kugou&hash=" + encodeURIComponent(song.hash || song.songmid)
+    const dlParams = song.source === "netease"
+      ? "source=netease&songmid=" + encodeURIComponent(song.songmid) + "&quality=" + q
       : "songmid=" + encodeURIComponent(song.songmid) + "&quality=" + q;
     const [dlRes, coverBlob, lyricText] = await Promise.all([
       fetch(API_BASE + "/api/music/download?" + dlParams),
@@ -471,8 +462,8 @@ async function startDownload(song, q) {
             .then((r) => (r.ok ? r.blob() : null))
             .catch(() => null)
         : Promise.resolve(null),
-      fetch(API_BASE + "/api/lyric?" + (song.source === "kugou"
-        ? "source=kugou&hash=" + encodeURIComponent(song.hash || song.songmid)
+      fetch(API_BASE + "/api/lyric?" + (song.source === "netease"
+        ? "source=netease&id=" + encodeURIComponent(song.songmid)
         : "songmid=" + encodeURIComponent(song.songmid)))
         .then((r) => (r.ok ? r.json().then((j) => j.lyric || "") : ""))
         .catch(() => ""),
@@ -509,8 +500,11 @@ async function startDownload(song, q) {
       off += c.length;
     }
     const meta = { title: song.songname, artist: song.singer, album: song.albumname, lyric: lyricText };
-    const finalBytes = await window.embedMetaToBytes(audioBytes, q === "flac" ? "flac" : "mp3", meta, coverBlob);
-    const type = q === "flac" ? "audio/flac" : "audio/mpeg";
+    // 按实际文件扩展名判定格式（网易云部分"无损"源实为 320，避免写错 ID3 破坏文件）
+    const extMatch = (data.url || "").match(/\.(flac|mp3|m4a|aac)(\?|$)/i);
+    const actualFlac = extMatch ? extMatch[1].toLowerCase() === "flac" : q === "flac" && data.level === "lossless";
+    const finalBytes = await window.embedMetaToBytes(audioBytes, actualFlac ? "flac" : "mp3", meta, coverBlob);
+    const type = actualFlac ? "audio/flac" : "audio/mpeg";
     statusEl.innerHTML = "";
 
     downloadStates.set(key, { status: "done" });
@@ -521,7 +515,7 @@ async function startDownload(song, q) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = (song.songname + " - " + song.singer + (q === "flac" ? ".flac" : ".mp3"))
+    a.download = (song.songname + " - " + song.singer + (actualFlac ? ".flac" : ".mp3"))
       .replace(/[\\/:*?"<>|]/g, "_");
     document.body.appendChild(a);
     a.click();
@@ -680,8 +674,8 @@ function updateLyrics(time) {
 async function loadLyrics(song) {
   renderLyrics([]);
   try {
-    const lrParams = song.source === "kugou"
-      ? "source=kugou&hash=" + encodeURIComponent(song.hash || song.songmid)
+    const lrParams = song.source === "netease"
+      ? "source=netease&id=" + encodeURIComponent(song.songmid)
       : "songmid=" + encodeURIComponent(song.songmid);
     const res = await fetch(API_BASE + "/api/lyric?" + lrParams);
     if (!res.ok) throw new Error("no lyric");
@@ -714,8 +708,8 @@ async function togglePlay(song, btn) {
 
   setPlayBtn(btn, false);
   try {
-    const dlParams = song.source === "kugou"
-      ? "source=kugou&hash=" + encodeURIComponent(song.hash || song.songmid)
+    const dlParams = song.source === "netease"
+      ? "source=netease&songmid=" + encodeURIComponent(song.songmid) + "&quality=128"
       : "songmid=" + encodeURIComponent(song.songmid) + "&quality=128";
     const res = await fetch(API_BASE + "/api/music/download?" + dlParams);
     let data = {};
