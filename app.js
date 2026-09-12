@@ -9,6 +9,30 @@ const QUALITY_LABELS = { flac: "FLAC 无损", 320: "320kbps", 128: "128kbps" };
 const QUALITY_SIZE_KEYS = { flac: "sizeflac", 320: "size320", 128: "size128" };
 const downloadStates = new Map();
 let currentSongs = [];
+let source = "qq"; // 当前音乐源：qq | kugou
+
+// ---- 音乐源切换 ----
+document.querySelectorAll(".src-btn").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const next = btn.dataset.source;
+    if (next === source) return;
+    source = next;
+    document.querySelectorAll(".src-btn").forEach((b) => {
+      const on = b === btn;
+      b.classList.toggle("active", on);
+      b.setAttribute("aria-selected", on ? "true" : "false");
+    });
+    // 停止当前播放并清空列表
+    if (audio) { audio.pause(); audio.src = ""; audio = null; }
+    currentSong = null;
+    playerEl.classList.add("hidden");
+    npEl.classList.add("hidden");
+    listEl.innerHTML = "";
+    metaEl.textContent = "";
+    statusEl.innerHTML = "";
+    if (keywordEl.value.trim()) handleSearch();
+  });
+});
 
 // 图标（内联 SVG，不用 emoji）
 const ICON_PLAY = '<svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
@@ -144,7 +168,11 @@ function applyCoverTheme(palette) {
   root.setProperty("--np-c", palette.npC);
 }
 function coverOf(song) {
-  return song && song.albummid ? API_BASE + "/api/cover?albummid=" + encodeURIComponent(song.albummid) : "";
+  if (!song) return "";
+  if (song.source === "kugou") {
+    return song.hash ? API_BASE + "/api/cover?source=kugou&hash=" + encodeURIComponent(song.hash) : "";
+  }
+  return song.albummid ? API_BASE + "/api/cover?albummid=" + encodeURIComponent(song.albummid) : "";
 }
 
 async function handleSearch() {
@@ -157,7 +185,7 @@ async function handleSearch() {
   metaEl.textContent = "";
   listEl.innerHTML = "";
   try {
-    const res = await fetch(API_BASE + "/api/music/search?q=" + encodeURIComponent(kw) + "&pageSize=20");
+    const res = await fetch(API_BASE + "/api/music/search?q=" + encodeURIComponent(kw) + "&pageSize=20&source=" + source);
     if (!res.ok) throw new Error("搜索请求失败");
     const data = await res.json();
     if (!data.items || data.items.length === 0) {
@@ -167,7 +195,7 @@ async function handleSearch() {
     }
     statusEl.innerHTML = "";
     metaEl.innerHTML = "共找到 <b>" + data.total + "</b> 首歌曲";
-    currentSongs = data.items;
+    currentSongs = data.items.map((s) => Object.assign(s, { source }));
     renderSongs(currentSongs);
     // 用首曲封面驱动页面氛围
     const first = currentSongs[0];
@@ -291,7 +319,8 @@ function closeDlPanel() {
 function renderDlRows() {
   if (!panelSong) return;
   dlRows.innerHTML = "";
-  ["flac", "320", "128"].forEach((q, i) => {
+  const quals = panelSong.source === "kugou" ? ["128"] : ["flac", "320", "128"];
+  quals.forEach((q, i) => {
     const row = renderDlRow(panelSong, q);
     row.style.animationDelay = (0.06 + i * 0.07).toFixed(2) + "s";
     dlRows.appendChild(row);
@@ -329,6 +358,15 @@ function renderDlRow(song, q) {
       '<span class="dl-size">' + (size ? formatSize(size) : "") + "</span>" +
       '<span class="dl-status">' + ICON_RETRY + " 重试</span>";
     row.addEventListener("click", () => startDownload(song, q));
+  } else if (song.source === "kugou" && song.vip128) {
+    row.classList.add("unavailable");
+    row.disabled = true;
+    row.title = "酷狗 VIP 歌曲";
+    row.innerHTML =
+      '<span class="dl-q">' + QUALITY_DESC[q].label + "</span>" +
+      '<span class="dl-tag">酷狗VIP</span>' +
+      '<span class="dl-size">' + (size ? formatSize(size) : "") + "</span>" +
+      '<span class="dl-status">需VIP</span>';
   } else if (!size) {
     row.classList.add("unavailable");
     row.disabled = true;
@@ -423,14 +461,19 @@ async function startDownload(song, q) {
   const fill = bar.querySelector(".fill");
 
   try {
+    const dlParams = song.source === "kugou"
+      ? "source=kugou&hash=" + encodeURIComponent(song.hash || song.songmid)
+      : "songmid=" + encodeURIComponent(song.songmid) + "&quality=" + q;
     const [dlRes, coverBlob, lyricText] = await Promise.all([
-      fetch(API_BASE + "/api/music/download?songmid=" + encodeURIComponent(song.songmid) + "&quality=" + q),
-      song.albummid
-        ? fetch(API_BASE + "/api/cover?albummid=" + encodeURIComponent(song.albummid))
+      fetch(API_BASE + "/api/music/download?" + dlParams),
+      coverOf(song)
+        ? fetch(coverOf(song))
             .then((r) => (r.ok ? r.blob() : null))
             .catch(() => null)
         : Promise.resolve(null),
-      fetch(API_BASE + "/api/lyric?songmid=" + encodeURIComponent(song.songmid))
+      fetch(API_BASE + "/api/lyric?" + (song.source === "kugou"
+        ? "source=kugou&hash=" + encodeURIComponent(song.hash || song.songmid)
+        : "songmid=" + encodeURIComponent(song.songmid)))
         .then((r) => (r.ok ? r.json().then((j) => j.lyric || "") : ""))
         .catch(() => ""),
     ]);
@@ -637,7 +680,10 @@ function updateLyrics(time) {
 async function loadLyrics(song) {
   renderLyrics([]);
   try {
-    const res = await fetch(API_BASE + "/api/lyric?songmid=" + encodeURIComponent(song.songmid));
+    const lrParams = song.source === "kugou"
+      ? "source=kugou&hash=" + encodeURIComponent(song.hash || song.songmid)
+      : "songmid=" + encodeURIComponent(song.songmid);
+    const res = await fetch(API_BASE + "/api/lyric?" + lrParams);
     if (!res.ok) throw new Error("no lyric");
     const j = await res.json();
     renderLyrics(parseLrc(j.lyric));
@@ -668,9 +714,10 @@ async function togglePlay(song, btn) {
 
   setPlayBtn(btn, false);
   try {
-    const res = await fetch(
-      API_BASE + "/api/music/download?songmid=" + encodeURIComponent(song.songmid) + "&quality=128"
-    );
+    const dlParams = song.source === "kugou"
+      ? "source=kugou&hash=" + encodeURIComponent(song.hash || song.songmid)
+      : "songmid=" + encodeURIComponent(song.songmid) + "&quality=128";
+    const res = await fetch(API_BASE + "/api/music/download?" + dlParams);
     let data = {};
     try { data = await res.json(); } catch (_) {}
     if (!res.ok || !data.url) throw new Error(data.message || "获取播放地址失败");

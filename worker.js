@@ -21,6 +21,14 @@ const SEARCH_URL = "https://c.y.qq.com/soso/fcgi-bin/client_search_cp";
 const VKEY_URL = "https://u6.y.qq.com/cgi-bin/musics.fcg";
 const STREAM_BASE = "https://isure.stream.qqmusic.qq.com/";
 
+// ---- 酷狗音乐 ----
+const KG_UA = "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1";
+const KG_REFERER = "https://m.kugou.com/";
+const KG_SEARCH_URL = "https://songsearch.kugou.com/song_search_v2";
+const KG_INFO_URL = "https://m.kugou.com/app/i/getSongInfo.php";
+const KG_LRC_SEARCH_URL = "https://krcs.kugou.com/search";
+const KG_LRC_DL_URL = "https://lyrics.kugou.com/download";
+
 const CORS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
@@ -82,6 +90,17 @@ function generateGuid() {
   let r = "";
   for (let i = 0; i < 10; i++) r += Math.floor(Math.random() * 10);
   return r;
+}
+
+// ---- 酷狗：登录 Cookie（未配置时为空串，免费歌曲仍可下载 128k） ----
+function kgCookie(env) {
+  const parts = [];
+  if (env.KG_UID) parts.push("KugooID=" + env.KG_UID);
+  if (env.KG_TOKEN) parts.push("t=" + env.KG_TOKEN);
+  if (env.KG_DFID) parts.push("dfid=" + env.KG_DFID + "; kg_dfid=" + env.KG_DFID);
+  if (env.KG_MID) parts.push("mid=" + env.KG_MID + "; kg_mid=" + env.KG_MID);
+  if (env.KG_USERNAME) parts.push("UserName=" + env.KG_USERNAME);
+  return parts.join("; ");
 }
 
 function getFileName(songmid, quality) {
@@ -192,6 +211,104 @@ async function getDownloadUrl(songmid, quality, env) {
   return sip + purl;
 }
 
+// ---- 酷狗：搜索 ----
+async function kgSearch(keyword, page = 1, pageSize = 20, env = {}) {
+  const params = new URLSearchParams({
+    keyword, page: String(page), pagesize: String(pageSize), platform: "WebFilter",
+    userid: "-1", clientver: "2000", iscorrection: "1", filter: "2",
+  });
+  const res = await fetch(`${KG_SEARCH_URL}?${params}`, {
+    headers: { "User-Agent": KG_UA, Referer: KG_REFERER, Cookie: kgCookie(env) },
+  });
+  if (!res.ok) throw new Error("酷狗搜索服务返回 " + res.status);
+  const data = await res.json();
+  const lists = data?.data?.lists ?? [];
+  const items = lists.map((s) => {
+    const fn = String(s.FileName || "");
+    const dash = fn.indexOf(" - ");
+    const singer = s.SingerName || (dash > 0 ? fn.slice(0, dash) : "");
+    const songname = s.SongName || (dash > 0 ? fn.slice(dash + 3) : fn);
+    return {
+      songmid: s.FileHash || "",
+      hash: s.FileHash || "",
+      hash320: s.HQFileHash || "",
+      hashFlac: s.SQFileHash || "",
+      songname,
+      singer,
+      albumname: s.AlbumName || "",
+      album_id: s.AlbumID ? String(s.AlbumID) : "",
+      interval: s.Duration || 0,
+      sizeflac: s.SQFileSize || 0,
+      size320: s.HQFileSize || 0,
+      size128: s.FileSize || 0,
+      vip128: s.Privilege !== 0,
+      vip320: s.HQPrivilege !== 0,
+      vipFlac: s.SQPrivilege !== 0,
+    };
+  });
+  return { items, total: data?.data?.total ?? items.length };
+}
+
+// ---- 酷狗：歌曲详情（播放地址 / 封面 / 时长） ----
+async function kgGetInfo(hash, env = {}) {
+  const url = `${KG_INFO_URL}?cmd=playInfo&hash=${encodeURIComponent(hash)}`;
+  const res = await fetch(url, {
+    headers: { "User-Agent": KG_UA, Referer: KG_REFERER, Cookie: kgCookie(env) },
+  });
+  if (!res.ok) throw new Error("酷狗接口返回 " + res.status);
+  return await res.json();
+}
+
+async function kgGetPlayUrl(hash, env = {}) {
+  const d = await kgGetInfo(hash, env);
+  if (!d.url) throw new Error("该歌曲在酷狗需要 VIP 会员或无法获取下载地址");
+  return d.url;
+}
+
+// ---- 酷狗：封面（代理 imge.kugou.com） ----
+async function kgGetCover(hash, env = {}) {
+  const d = await kgGetInfo(hash, env);
+  let img = d.album_img || "";
+  img = img.replace("{size}", "400");
+  if (!/^https?:/i.test(img)) img = "https:" + img;
+  const imgRes = await fetch(img, {
+    headers: { "User-Agent": KG_UA, Referer: KG_REFERER, Cookie: kgCookie(env) },
+  });
+  if (!imgRes.ok) throw new Error("酷狗封面获取失败");
+  const buf = await imgRes.arrayBuffer();
+  return new Response(buf, {
+    headers: {
+      "Access-Control-Allow-Origin": "*",
+      "Content-Type": imgRes.headers.get("content-type") || "image/jpeg",
+      "Cache-Control": "public, max-age=86400",
+    },
+  });
+}
+
+// ---- 酷狗：歌词（krcs 搜索 + fmt=lrc 明文下载） ----
+async function kgGetLyric(hash, env = {}) {
+  const d = await kgGetInfo(hash, env);
+  const songname = d.songName || "";
+  const duration = Math.max(0, Math.ceil((d.timeLength || 0) / 1000));
+  const sres = await fetch(
+    `${KG_LRC_SEARCH_URL}?ver=1&man=yes&client=mobi&keyword=${encodeURIComponent(songname)}&duration=${duration}&hash=${encodeURIComponent(hash)}`,
+    { headers: { "User-Agent": KG_UA, Referer: KG_REFERER, Cookie: kgCookie(env) } }
+  );
+  const sj = await sres.json();
+  const cand = (sj.candidates || [])[0];
+  if (!cand) return { lyric: "" };
+  const lres = await fetch(
+    `${KG_LRC_DL_URL}?ver=1&client=mobi&id=${encodeURIComponent(cand.id)}&accesskey=${encodeURIComponent(cand.accesskey)}&fmt=lrc&charset=utf8`,
+    { headers: { "User-Agent": KG_UA, Referer: KG_REFERER, Cookie: kgCookie(env) } }
+  );
+  const lj = await lres.json();
+  let lyric = "";
+  if (lj.content) {
+    try { lyric = decodeURIComponent(escape(atob(lj.content))); } catch (_) {}
+  }
+  return { lyric: lyric.replace(/^\uFEFF/, "") };
+}
+
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), { status, headers: CORS });
 }
@@ -211,23 +328,42 @@ export default {
         if (!q) return json({ message: "搜索关键词不能为空" }, 400);
         const page = Math.max(1, parseInt(url.searchParams.get("page")) || 1);
         const pageSize = Math.min(50, Math.max(1, parseInt(url.searchParams.get("pageSize")) || 20));
+        const source = url.searchParams.get("source") || "qq";
+        if (source === "kugou") return json(await kgSearch(q, page, pageSize, env));
         return json(await search(q, page, pageSize));
       }
       if (url.pathname === "/api/music/download") {
-        const songmid = url.searchParams.get("songmid") || "";
+        const songmid = url.searchParams.get("songmid") || url.searchParams.get("hash") || "";
         const quality = ["flac", "320", "128"].includes(url.searchParams.get("quality"))
           ? url.searchParams.get("quality")
           : "320";
-        if (!songmid) return json({ message: "songmid 不能为空" }, 400);
+        const source = url.searchParams.get("source") || "qq";
+        if (!songmid) return json({ message: "songmid/hash 不能为空" }, 400);
+        if (source === "kugou") {
+          const streamUrl = await kgGetPlayUrl(songmid, env);
+          return json({ url: streamUrl, source: "kugou" });
+        }
         const streamUrl = await getDownloadUrl(songmid, quality, env);
-        return json({ url: streamUrl });
+        return json({ url: streamUrl, source: "qq" });
       }
       if (url.pathname === "/api/cover") {
+        const source = url.searchParams.get("source") || "qq";
+        if (source === "kugou") {
+          const hash = url.searchParams.get("hash") || "";
+          if (!hash) return json({ message: "hash 不能为空" }, 400);
+          return await kgGetCover(hash, env);
+        }
         const albummid = url.searchParams.get("albummid") || "";
         if (!albummid) return json({ message: "albummid 不能为空" }, 400);
         return await getCover(albummid);
       }
       if (url.pathname === "/api/lyric") {
+        const source = url.searchParams.get("source") || "qq";
+        if (source === "kugou") {
+          const hash = url.searchParams.get("hash") || "";
+          if (!hash) return json({ message: "hash 不能为空" }, 400);
+          return json(await kgGetLyric(hash, env));
+        }
         const songmid = url.searchParams.get("songmid") || "";
         if (!songmid) return json({ message: "songmid 不能为空" }, 400);
         return json(await getLyric(songmid));

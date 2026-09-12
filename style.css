@@ -118,6 +118,39 @@ body {
   letter-spacing: 0.2px;
   animation: fadeUp 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.16s both;
 }
+.source-switch {
+  margin-top: 22px;
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  background: var(--card);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid var(--card-border);
+  border-radius: 999px;
+  box-shadow: var(--shadow);
+  animation: fadeUp 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.22s both;
+}
+.src-btn {
+  appearance: none;
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--ink-2);
+  padding: 8px 18px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: color 0.25s, background 0.25s, box-shadow 0.25s, transform 0.25s;
+  -webkit-tap-highlight-color: transparent;
+}
+.src-btn.active {
+  color: #fff;
+  background: linear-gradient(135deg, #2f54eb, #722ed1);
+  box-shadow: 0 6px 18px rgba(47, 84, 235, 0.35);
+}
+.src-btn:active { transform: scale(0.96); }
 .search-box {
   margin-top: 24px;
   display: flex;
