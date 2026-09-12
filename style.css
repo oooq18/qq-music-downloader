@@ -485,6 +485,7 @@ body {
 }
 .now-playing.hidden { display: none; }
 .now-playing.closing { animation: npClose 0.32s cubic-bezier(0.32, 0.72, 0, 1) forwards; }
+.now-playing.dragging { transition: none !important; }
 @keyframes npClose {
   from { opacity: 1; transform: scale(1); }
   to { opacity: 0; transform: scale(0.965) translateY(26px); }
@@ -498,11 +499,13 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
+  cursor: grab;
   -webkit-tap-highlight-color: transparent;
   border-radius: 12px;
   transition: background 0.2s;
+  touch-action: none;
 }
+.np-handle:active { cursor: grabbing; }
 .np-handle::before {
   content: "";
   width: 40px; height: 4.5px;
