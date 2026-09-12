@@ -567,18 +567,53 @@ let lastLyricIdx = -1;
 const LYRICS_HALF = 8; // 上下保留显示的行数
 
 function parseLrc(lrcText) {
-  const lines = String(lrcText || "").trim().split("\n");
+  const src = String(lrcText || "").replace(/^\uFEFF/, "");
+  const re = /\[(\d{1,2}):(\d{2})(?:[.:](\d{1,3}))?\]/g;
+  const stamps = [];
+  let m;
+  while ((m = re.exec(src)) !== null) {
+    const sec = parseInt(m[1], 10) * 60 + parseInt(m[2], 10) + (m[3] ? parseInt(m[3], 10) / Math.pow(10, m[3].length) : 0);
+    stamps.push({ time: sec, end: re.lastIndex });
+  }
   const out = [];
-  lines.forEach((line) => {
-    const m = line.match(/\[(\d{2}):(\d{2})(?:\.(\d{2,3}))?\]/);
-    if (!m) return;
-    const text = line.replace(m[0], "").trim();
+  stamps.forEach((s, i) => {
+    // 该时间戳之后、下一个时间戳之前的文本（保留行内换行）
+    const seg = src.slice(s.end, i + 1 < stamps.length ? stamps[i + 1].end : undefined);
+    // 去掉该段内残留的 [xx:xx.xx] 时间戳壳
+    const text = seg.replace(/\[\d{1,2}:\d{2}(?:[.:]\d{1,3})?\]/g, "").trim();
     if (!text) return;
-    const time = parseInt(m[1], 10) * 60 + parseInt(m[2], 10) + parseInt(m[3] || "0", 10) / 1000;
-    out.push({ time: time, text: text });
+    out.push({ time: s.time, text: text });
   });
   out.sort((a, b) => a.time - b.time);
   return out;
+}
+
+// 同时间戳多行（原文+译文）合并为一行
+function mergeSameTime(list) {
+  const out = [];
+  list.forEach((row) => {
+    const last = out[out.length - 1];
+    if (last && Math.abs(last.time - row.time) < 0.05 && !last.trans) {
+      last.trans = row.text;
+    } else {
+      out.push({ ...row });
+    }
+  });
+  return out;
+}
+
+// 把翻译 LRC 合并到原文：翻译行时间与某原文行相差 ≤ 2.5s 时挂到该行
+function mergeTrans(list, transList) {
+  if (!list.length || !transList.length) return list;
+  let ti = 0;
+  const result = list.map((row) => ({ ...row }));
+  transList.forEach((t) => {
+    while (ti < result.length && result[ti].time < t.time - 2.5) ti++;
+    for (let i = ti; i < result.length && result[i].time <= t.time + 2.5; i++) {
+      if (!result[i].trans) { result[i].trans = t.text; break; }
+    }
+  });
+  return result;
 }
 
 function renderLyrics(list) {
@@ -594,7 +629,18 @@ function renderLyrics(list) {
   list.forEach((item, i) => {
     const div = document.createElement("div");
     div.className = "lyric-line" + (i === 0 ? " active" : "");
-    div.textContent = item.text;
+    if (item.trans) {
+      const t1 = document.createElement("span");
+      t1.className = "lyric-text";
+      t1.textContent = item.text;
+      const t2 = document.createElement("span");
+      t2.className = "lyric-trans";
+      t2.textContent = item.trans;
+      div.appendChild(t1);
+      div.appendChild(t2);
+    } else {
+      div.textContent = item.text;
+    }
     lyricsEl.appendChild(div);
     lyricEls.push(div);
   });
@@ -633,7 +679,9 @@ async function loadLyrics(song) {
     const res = await fetch(API_BASE + "/api/lyric?songmid=" + encodeURIComponent(song.songmid));
     if (!res.ok) throw new Error("no lyric");
     const j = await res.json();
-    renderLyrics(parseLrc(j.lyric));
+    const list = mergeSameTime(parseLrc(j.lyric));
+    if (j.trans) renderLyrics(mergeTrans(list, parseLrc(j.trans)));
+    else renderLyrics(list);
   } catch (_) {
     lyricsEmpty.style.display = "flex";
   }

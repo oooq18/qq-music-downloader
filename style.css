@@ -552,15 +552,6 @@ body {
   transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
 }
 .np-cover-wrap:hover .np-cover { transform: scale(1.03) rotate(-1deg); }
-.np-cover .disc-hole {
-  position: absolute;
-  left: 50%; top: 50%;
-  width: 16px; height: 16px;
-  margin: -8px 0 0 -8px;
-  border-radius: 50%;
-  background: rgba(0, 0, 0, 0.45);
-  box-shadow: inset 0 0 0 3px rgba(255, 255, 255, 0.85);
-}
 
 .np-info { text-align: center; flex-shrink: 0; animation: fadeUp 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.2s both; }
 .np-name {
@@ -659,6 +650,11 @@ body {
   color: rgba(255, 255, 255, 0.32);
   transition: color 0.5s, font-size 0.5s, font-weight 0.5s;
   letter-spacing: 0.4px;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.5em;
+  flex-wrap: wrap;
 }
 .lyric-line.active {
   color: #fff;
@@ -667,6 +663,15 @@ body {
 }
 .lyric-line.near { color: rgba(255, 255, 255, 0.55); }
 .lyric-line.time { font-size: 12px; color: rgba(255, 255, 255, 0.28); font-variant-numeric: tabular-nums; }
+.lyric-trans {
+  font-size: 0.72em;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.42);
+  letter-spacing: 0.2px;
+  transition: color 0.5s;
+}
+.lyric-line.active .lyric-trans { color: rgba(255, 255, 255, 0.78); }
+.lyric-line.near .lyric-trans { color: rgba(255, 255, 255, 0.6); }
 .np-lyrics-empty {
   position: absolute;
   inset: 0;
@@ -682,7 +687,7 @@ body {
 .lyric-line {
   word-break: break-word;
   overflow-wrap: anywhere;
-  white-space: normal;
+  white-space: pre-line;
 }
 
 /* ---- 横屏 / 宽屏：左封面右歌词（Apple Music 分栏） ---- */

@@ -198,7 +198,12 @@ app.get("/api/lyric", async (req, res) => {
     const lj = await lr.json();
     let lyric = "";
     if (lj && lj.lyric) lyric = decodeURIComponent(escape(Buffer.from(lj.lyric, "base64").toString("binary")));
-    res.json({ lyric });
+    let trans = "";
+    if (lj && lj.trans) {
+      try { trans = decodeURIComponent(escape(Buffer.from(lj.trans, "base64").toString("binary"))); }
+      catch (_) { trans = ""; }
+    }
+    res.json({ lyric, trans });
   } catch (err) {
     res.status(500).json({ message: err.message || "歌词获取失败" });
   }

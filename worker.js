@@ -130,7 +130,7 @@ async function getCover(albummid) {
   });
 }
 
-// 歌词（LRC 文本）
+// 歌词（LRC 文本 + 翻译）
 async function getLyric(songmid) {
   const lr = await fetch(
     `https://c.y.qq.com/lyric/fcgi-bin/fcg_query_lyric_new.fcg?songmid=${encodeURIComponent(songmid)}&format=json`,
@@ -142,7 +142,13 @@ async function getLyric(songmid) {
   if (lj && lj.lyric) {
     lyric = decodeURIComponent(escape(atob(lj.lyric)));
   }
-  return { lyric };
+  let trans = "";
+  if (lj && lj.trans) {
+    try {
+      trans = decodeURIComponent(escape(atob(lj.trans)));
+    } catch (_) { trans = ""; }
+  }
+  return { lyric, trans };
 }
 
 // 获取下载地址（ag-1 协议）
