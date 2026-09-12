@@ -395,7 +395,6 @@ function syncListenBtn() {
   }
 }
 
-document.getElementById("dlClose").addEventListener("click", closeDlPanel);
 document.getElementById("dlMask").addEventListener("click", closeDlPanel);
 document.addEventListener("keydown", (e) => {
   if (e.key !== "Escape") return;
@@ -803,7 +802,7 @@ function endNpDrag() {
   if (!npDragging) return;
   npDragging = false;
   npEl.classList.remove("dragging");
-  npEl.style.transition = "transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)";
+  npEl.style.transition = "transform 0.3s linear";
   if (npDragDy >= NP_DRAG_THRESHOLD) {
     // 超过阈值：滑出屏幕关闭
     npEl.style.transform = "translateY(110%)";
