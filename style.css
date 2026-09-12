@@ -477,18 +477,18 @@ body {
   color: #fff;
   padding: 14px 24px calc(26px + env(safe-area-inset-bottom));
   overflow-y: auto;
-  animation: npUp 0.42s cubic-bezier(0.22, 1, 0.36, 1);
+  animation: npUp 0.45s cubic-bezier(0.22, 1, 0.36, 1);
 }
 @keyframes npUp {
-  from { opacity: 0; transform: translateY(60px); }
+  from { opacity: 0; transform: translateY(100%); }
   to { opacity: 1; transform: translateY(0); }
 }
 .now-playing.hidden { display: none; }
-.now-playing.closing { animation: npClose 0.32s cubic-bezier(0.32, 0.72, 0, 1) forwards; }
+.now-playing.closing { animation: npClose 0.36s cubic-bezier(0.32, 0.72, 0, 1) forwards; }
 .now-playing.dragging { transition: none !important; }
 @keyframes npClose {
-  from { opacity: 1; transform: scale(1); }
-  to { opacity: 0; transform: scale(0.965) translateY(26px); }
+  from { transform: translateY(0); }
+  to { transform: translateY(100%); }
 }
 
 .np-handle {
@@ -774,11 +774,11 @@ body {
 }
 .dl-modal.hidden { display: none; }
 .dl-modal.closing .dl-mask { animation: fadeOut 0.26s ease forwards; }
-.dl-modal.closing .dl-panel { animation: panelClose 0.3s cubic-bezier(0.32, 0.72, 0, 1) forwards; }
+.dl-modal.closing .dl-panel { animation: panelClose 0.3s cubic-bezier(0.4, 0, 1, 1) forwards; }
 @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
 @keyframes panelClose {
-  from { transform: scale(1); opacity: 1; }
-  to { transform: scale(0.97) translateY(22px); opacity: 0; }
+  from { transform: translateY(0); }
+  to { transform: translateY(100%); }
 }
 .dl-mask {
   position: absolute;

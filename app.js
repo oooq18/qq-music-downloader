@@ -795,21 +795,18 @@ npHandle.addEventListener("pointermove", (e) => {
   if (dy > 4) npDragMoved = true;
   if (dy <= 0) { npDragDy = 0; return; }
   npDragDy = dy;
-  // 跟手位移 + 距离越远越淡
-  const resist = Math.min(1, dy / NP_DRAG_THRESHOLD);
+  // 纯跟手位移，不淡出不变糊
   npEl.style.transform = "translateY(" + dy + "px)";
-  npEl.style.opacity = String(1 - resist * 0.75);
 });
 
 function endNpDrag() {
   if (!npDragging) return;
   npDragging = false;
   npEl.classList.remove("dragging");
-  npEl.style.transition = "transform 0.3s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.3s";
+  npEl.style.transition = "transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)";
   if (npDragDy >= NP_DRAG_THRESHOLD) {
     // 超过阈值：滑出屏幕关闭
     npEl.style.transform = "translateY(110%)";
-    npEl.style.opacity = "0";
     setTimeout(() => {
       npEl.classList.add("hidden");
       resetNpDrag();
@@ -818,7 +815,6 @@ function endNpDrag() {
   } else {
     // 未到阈值：弹回
     npEl.style.transform = "";
-    npEl.style.opacity = "";
     setTimeout(resetNpDrag, 350);
   }
   npDragDy = 0;
