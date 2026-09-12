@@ -2,27 +2,31 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>音乐终端 · MUSIC TERMINAL</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>音乐下载 · 在线播放与无损下载</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <div class="ambient" aria-hidden="true"></div>
+  <div class="ambient" id="ambient" aria-hidden="true"></div>
 
   <div class="app">
     <header class="header">
-      <span class="brand-mark" aria-hidden="true"></span>
-      <span class="brand-name">音乐终端</span>
-      <span class="brand-en">MUSIC TERMINAL</span>
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M12 3a9 9 0 0 0-9 9v9h9a9 9 0 0 0 0-18zm0 6a3 3 0 1 1 0 6 3 3 0 0 1 0-6z" opacity="0.9"/></svg>
+        </span>
+        <span class="brand-name">Music Downloader</span>
+      </div>
       <span class="header-status" id="headerStatus"><span class="dot" aria-hidden="true"></span>STANDBY</span>
     </header>
 
     <section class="hero">
-      <h1 class="hero-title">MUSIC<br />TERMINAL</h1>
-      <p class="hero-sub">音乐下载终端</p>
+      <h1 class="hero-title">搜索 · 试听 · 下载</h1>
+      <p class="hero-sub">海量歌曲在线试听，封面歌词无损内嵌</p>
       <div class="search-box">
+        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
         <input id="keyword" type="text" placeholder="搜索歌曲或歌手" autocomplete="off" spellcheck="false" />
-        <button id="searchBtn">检索</button>
+        <button id="searchBtn">搜索</button>
       </div>
     </section>
 
@@ -33,29 +37,59 @@
     <footer class="footer">仅供学习研究使用 · 请支持正版音乐</footer>
   </div>
 
-  <!-- 底部播放器 -->
+  <!-- 底部迷你播放条 -->
   <div id="player" class="player hidden">
-    <div class="player-now">
-      <div class="player-disc" id="playerCover"><span class="disc-hole"></span></div>
-      <div class="tonearm" aria-hidden="true">
-        <span class="arm-rod"></span>
-        <span class="arm-head"></span>
-      </div>
+    <div class="player-cover" id="playerCover">
+      <span class="disc-hole"></span>
     </div>
-    <div class="player-info">
+    <div class="player-body" id="playerBody">
       <div class="player-name" id="playerName">未在播放</div>
       <div class="player-singer" id="playerSinger"></div>
-      <div class="player-progress">
-        <div class="progress-track"><div class="progress-fill" id="playerFill"></div></div>
-        <div class="player-time"><span id="playerCur">00:00</span><span id="playerDur">00:00</span></div>
-      </div>
+      <div class="player-progress"><div class="player-fill" id="playerFill"></div></div>
     </div>
     <button id="playerPlay" class="player-play" aria-label="播放或暂停">
-      <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
     </button>
-    <button id="playerClose" class="player-close" aria-label="关闭播放器">
-      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    <button id="playerExpand" class="player-expand" aria-label="展开正在播放">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 9l8 7 8-7"/></svg>
     </button>
+  </div>
+
+  <!-- 正在播放全屏页 -->
+  <div id="nowPlaying" class="now-playing hidden">
+    <div class="np-handle" id="npHandle"></div>
+    <div class="np-header">
+      <button class="np-close" id="npClose" aria-label="收起">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 9l8 7 8-7"/></svg>
+      </button>
+      <span class="np-title">正在播放</span>
+      <span class="np-placeholder"></span>
+    </div>
+
+    <div class="np-cover-wrap">
+      <div class="np-cover" id="npCover"><span class="disc-hole"></span></div>
+    </div>
+
+    <div class="np-info">
+      <div class="np-name" id="npName"></div>
+      <div class="np-singer" id="npSinger"></div>
+    </div>
+
+    <div class="np-progress">
+      <div class="np-track" id="npTrack"><div class="np-fill" id="npFill"></div></div>
+      <div class="np-time"><span id="npCur">0:00</span><span id="npDur">0:00</span></div>
+    </div>
+
+    <div class="np-controls">
+      <button class="np-play" id="npPlay" aria-label="播放或暂停">
+        <svg viewBox="0 0 24 24" width="30" height="30" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+      </button>
+    </div>
+
+    <div class="np-lyrics-wrap">
+      <div class="np-lyrics" id="lyricsEl"></div>
+      <div class="np-lyrics-empty" id="lyricsEmpty">暂无歌词</div>
+    </div>
   </div>
 
   <!-- 音质选择面板 -->

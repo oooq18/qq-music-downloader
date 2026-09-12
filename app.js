@@ -10,7 +10,7 @@ const QUALITY_SIZE_KEYS = { flac: "sizeflac", 320: "size320", 128: "size128" };
 const downloadStates = new Map();
 let currentSongs = [];
 
-// 播放/暂停图标（内联 SVG，避免 emoji 在不同平台渲染不一致）
+// 图标（内联 SVG，不用 emoji）
 const ICON_PLAY = '<svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
 const ICON_PAUSE = '<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>';
 const ICON_CHECK = '<svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>';
@@ -18,18 +18,32 @@ const ICON_RETRY = '<svg viewBox="0 0 24 24" width="10" height="10" fill="none" 
 const ICON_DL = '<svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>';
 
 // ---- 播放器状态 ----
-let audio = null;          // 当前 Audio 实例
-let currentSong = null;    // 当前播放的歌曲对象
-let playBtnOf = null;      // 当前高亮的播放按钮
+let audio = null;
+let currentSong = null;
+let playBtnOf = null;
+
 const playerEl = document.getElementById("player");
 const playerCover = document.getElementById("playerCover");
 const playerName = document.getElementById("playerName");
 const playerSinger = document.getElementById("playerSinger");
 const playerFill = document.getElementById("playerFill");
-const playerCur = document.getElementById("playerCur");
-const playerDur = document.getElementById("playerDur");
 const playerPlay = document.getElementById("playerPlay");
-const playerClose = document.getElementById("playerClose");
+const playerBody = document.getElementById("playerBody");
+const playerExpand = document.getElementById("playerExpand");
+
+const npEl = document.getElementById("nowPlaying");
+const npCover = document.getElementById("npCover");
+const npName = document.getElementById("npName");
+const npSinger = document.getElementById("npSinger");
+const npFill = document.getElementById("npFill");
+const npCur = document.getElementById("npCur");
+const npDur = document.getElementById("npDur");
+const npPlay = document.getElementById("npPlay");
+const npClose = document.getElementById("npClose");
+const npHandle = document.getElementById("npHandle");
+const npTrack = document.getElementById("npTrack");
+const lyricsEl = document.getElementById("lyricsEl");
+const lyricsEmpty = document.getElementById("lyricsEmpty");
 
 function formatSize(bytes) {
   if (!bytes) return "-";
@@ -37,7 +51,8 @@ function formatSize(bytes) {
   return (bytes / (1024 * 1024)).toFixed(1) + " MB";
 }
 function formatDuration(s) {
-  return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
+  if (!isFinite(s) || s < 0) s = 0;
+  return Math.floor(s / 60) + ":" + String(Math.floor(s % 60)).padStart(2, "0");
 }
 function escapeHtml(str) {
   return String(str || "").replace(/[&<>"']/g, (c) => ({
@@ -45,7 +60,7 @@ function escapeHtml(str) {
   }[c]));
 }
 
-// ---- 封面取色：从专辑封面提取主色，驱动页面氛围光 ----
+// ---- 封面取色：驱动页面亮色渐变与播放页深色渐变 ----
 function rgbToHsl(r, g, b) {
   r /= 255; g /= 255; b /= 255;
   const max = Math.max(r, g, b), min = Math.min(r, g, b);
@@ -93,31 +108,42 @@ function extractPalette(img) {
     if (data[i + 3] < 128) continue;
     const R = data[i], G = data[i + 1], B = data[i + 2];
     const lum = 0.2126 * R + 0.7152 * G + 0.0722 * B;
-    if (lum < 20 || lum > 240) continue; // 剔除纯黑纯白
+    if (lum < 18 || lum > 245) continue;
     const sat = Math.max(R, G, B) - Math.min(R, G, B);
-    const w = 1 + sat / 255; // 高饱和像素加权
+    const w = 1 + sat / 255;
     r += R * w; g += G * w; b += B * w; n += w;
   }
-  if (!n) { r = 210; g = 210; b = 218; }
+  if (!n) { r = 180; g = 184; b = 200; }
   else { r /= n; g /= n; b /= n; }
-
-  // 氛围色：保持色相，提亮提饱和（保证在深色背景上可见）
   const [h, s, l] = rgbToHsl(r, g, b);
-  const amb = hslToRgb(h, Math.min(s * 0.7 + 0.18, 0.5), 0.52);
-  const softBase = hslToRgb(h, Math.min(s * 0.6 + 0.12, 0.42), 0.42);
+
+  // 页面亮色渐变（粉彩感）
+  const bgA = hslToRgb(h, Math.min(s * 0.55 + 0.08, 0.5), 0.93);
+  const bgB = hslToRgb((h + 0.08) % 1, Math.min(s * 0.5 + 0.1, 0.55), 0.86);
+  const bgC = hslToRgb((h + 0.92) % 1, Math.min(s * 0.42 + 0.06, 0.45), 0.9);
+  // 播放页深色渐变
+  const npA = hslToRgb(h, Math.min(s * 0.8 + 0.12, 0.6), 0.4);
+  const npB = hslToRgb((h + 0.05) % 1, Math.min(s * 0.6 + 0.1, 0.5), 0.24);
+  const npC = hslToRgb((h + 0.94) % 1, Math.min(s * 0.55 + 0.08, 0.45), 0.14);
 
   return {
-    accent: "rgb(" + Math.round(r * 0.85) + "," + Math.round(g * 0.85) + "," + Math.round(b * 0.85) + ")",
-    soft: "rgba(" + amb[0] + "," + amb[1] + "," + amb[2] + ",0.30)",
-    glow: "rgba(" + softBase[0] + "," + softBase[1] + "," + softBase[2] + ",0.15)",
+    bgA: "rgb(" + bgA.join(",") + ")",
+    bgB: "rgb(" + bgB.join(",") + ")",
+    bgC: "rgb(" + bgC.join(",") + ")",
+    npA: "rgb(" + npA.join(",") + ")",
+    npB: "rgb(" + npB.join(",") + ")",
+    npC: "rgb(" + npC.join(",") + ")",
   };
 }
-function applyTheme(color) {
-  if (!color) return;
+function applyCoverTheme(palette) {
+  if (!palette) return;
   const root = document.documentElement.style;
-  root.setProperty("--accent", color.accent);
-  root.setProperty("--accent-soft", color.soft);
-  root.setProperty("--accent-glow", color.glow);
+  root.setProperty("--bg-a", palette.bgA);
+  root.setProperty("--bg-b", palette.bgB);
+  root.setProperty("--bg-c", palette.bgC);
+  root.setProperty("--np-a", palette.npA);
+  root.setProperty("--np-b", palette.npB);
+  root.setProperty("--np-c", palette.npC);
 }
 function coverOf(song) {
   return song && song.albummid ? API_BASE + "/api/cover?albummid=" + encodeURIComponent(song.albummid) : "";
@@ -149,7 +175,7 @@ async function handleSearch() {
     const first = currentSongs[0];
     if (first && first.albummid) {
       const img = new Image();
-      img.onload = () => { try { applyTheme(extractPalette(img)); } catch (_) {} };
+      img.onload = () => { try { applyCoverTheme(extractPalette(img)); } catch (_) {} };
       img.src = coverOf(first);
     }
     headerStatus.textContent = "FOUND " + data.total;
@@ -171,7 +197,6 @@ function renderSongs(songs) {
     card.dataset.mid = song.songmid;
     card.style.animationDelay = Math.min(i * 45, 700) + "ms";
 
-    // 封面圆片（黑胶唱片）
     const disc = document.createElement("div");
     disc.className = "song-disc";
     if (song.albummid) {
@@ -183,7 +208,6 @@ function renderSongs(songs) {
     }
     card.appendChild(disc);
 
-    // 歌曲信息
     const body = document.createElement("div");
     body.className = "song-body";
     body.innerHTML =
@@ -197,7 +221,6 @@ function renderSongs(songs) {
       "</div>";
     card.appendChild(body);
 
-    // 操作区：播放 + 音质
     const actions = document.createElement("div");
     actions.className = "song-actions";
 
@@ -228,8 +251,7 @@ const dlName = document.getElementById("dlName");
 const dlSinger = document.getElementById("dlSinger");
 const dlListen = document.getElementById("dlListen");
 const dlRows = document.getElementById("dlRows");
-let panelSong = null; // 面板当前歌曲
-let panelListenPlaying = false;
+let panelSong = null;
 
 const QUALITY_DESC = {
   flac: { label: "FLAC 无损", tag: "无损" },
@@ -239,7 +261,6 @@ const QUALITY_DESC = {
 
 function openDlPanel(song) {
   panelSong = song;
-  panelListenPlaying = false;
   dlListen.classList.remove("listening");
   dlListen.innerHTML = ICON_PLAY + " 试听预览";
   dlName.textContent = song.songname;
@@ -258,7 +279,6 @@ function openDlPanel(song) {
 function closeDlPanel() {
   dlModal.classList.add("hidden");
   panelSong = null;
-  panelListenPlaying = false;
 }
 
 function renderDlRows() {
@@ -329,7 +349,6 @@ function refreshDlRow(song, q) {
 // 试听预览：复用播放器
 dlListen.addEventListener("click", async () => {
   if (!panelSong) return;
-  // 若正在播这首歌，切换暂停
   if (audio && currentSong && currentSong.songmid === panelSong.songmid) {
     if (audio.paused) {
       audio.play();
@@ -352,7 +371,6 @@ dlListen.addEventListener("click", async () => {
   }
 });
 
-// 播放器状态变化时同步试听按钮
 function syncListenBtn() {
   if (!panelSong || !audio || !currentSong || currentSong.songmid !== panelSong.songmid) {
     dlListen.innerHTML = ICON_PLAY + " 试听预览";
@@ -395,7 +413,6 @@ async function startDownload(song, q) {
   const fill = bar.querySelector(".fill");
 
   try {
-    // 1. 获取下载直链，同时并行拉取封面和歌词
     const [dlRes, coverBlob, lyricText] = await Promise.all([
       fetch(API_BASE + "/api/music/download?songmid=" + encodeURIComponent(song.songmid) + "&quality=" + q),
       song.albummid
@@ -411,7 +428,6 @@ async function startDownload(song, q) {
     try { data = await dlRes.json(); } catch (_) {}
     if (!dlRes.ok || !data.url) throw new Error(data.message || "获取下载地址失败");
 
-    // 2. 浏览器直连 QQ 流服务器拉取（已确认支持 CORS），带进度
     const streamRes = await fetch(data.url);
     if (!streamRes.ok) throw new Error("下载失败：" + streamRes.status);
     const total = Number(streamRes.headers.get("Content-Length")) || 0;
@@ -431,7 +447,6 @@ async function startDownload(song, q) {
       }
     }
 
-    // 3. 内嵌封面和歌词元数据
     fill.style.width = "100%";
     statusEl.innerHTML = '<div class="spinner"></div><p>正在写入封面和歌词...</p>';
     const audioBytes = new Uint8Array(received);
@@ -449,7 +464,6 @@ async function startDownload(song, q) {
     refreshDlRow(song, q);
     updateListDlBtn(song, q, "done");
 
-    // 4. 保存为本地文件（带封面和歌词）
     const blob = new Blob([finalBytes], { type });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -475,7 +489,6 @@ async function startDownload(song, q) {
   }
 }
 
-// 面板行与列表下载按钮的状态联动
 function updateDownloadUi(song, q, pct) {
   const key = song.songmid + "-" + q;
   if (panelSong && panelSong.songmid === song.songmid) {
@@ -515,13 +528,8 @@ searchBtn.addEventListener("click", handleSearch);
 keywordEl.addEventListener("keydown", (e) => { if (e.key === "Enter") handleSearch(); });
 
 // ============================================================
-// 播放器（预览 128kbps）
+// 播放器（预览 128kbps）+ 滚动歌词
 // ============================================================
-function fmtTime(s) {
-  if (!isFinite(s) || s < 0) s = 0;
-  return Math.floor(s / 60) + ":" + String(Math.floor(s % 60)).padStart(2, "0");
-}
-
 function setPlayBtn(btn, playing) {
   if (!btn) return;
   btn.innerHTML = playing ? ICON_PAUSE : ICON_PLAY;
@@ -535,28 +543,105 @@ function highlightPlayBtn(songmid) {
   playBtnOf = document.querySelector('.song-play[data-mid="' + songmid + '"]');
 }
 
+// ---- 歌词 ----
+let lyricsData = [];
+let lyricEls = [];
+let lastLyricIdx = -1;
+const LYRICS_HALF = 8; // 上下保留显示的行数
+
+function parseLrc(lrcText) {
+  const lines = String(lrcText || "").trim().split("\n");
+  const out = [];
+  lines.forEach((line) => {
+    const m = line.match(/\[(\d{2}):(\d{2})(?:\.(\d{2,3}))?\]/);
+    if (!m) return;
+    const text = line.replace(m[0], "").trim();
+    if (!text) return;
+    const time = parseInt(m[1], 10) * 60 + parseInt(m[2], 10) + parseInt(m[3] || "0", 10) / 1000;
+    out.push({ time: time, text: text });
+  });
+  out.sort((a, b) => a.time - b.time);
+  return out;
+}
+
+function renderLyrics(list) {
+  lyricsEl.innerHTML = "";
+  lyricsData = list;
+  lyricEls = [];
+  lastLyricIdx = -1;
+  if (!list.length) {
+    lyricsEmpty.style.display = "flex";
+    return;
+  }
+  lyricsEmpty.style.display = "none";
+  list.forEach((item, i) => {
+    const div = document.createElement("div");
+    div.className = "lyric-line" + (i === 0 ? " active" : "");
+    div.textContent = item.text;
+    lyricsEl.appendChild(div);
+    lyricEls.push(div);
+  });
+  // 等待布局后居中第一行
+  requestAnimationFrame(() => updateLyrics(0));
+}
+
+function updateLyrics(time) {
+  if (!lyricEls.length) return;
+  let idx = 0;
+  for (let i = 0; i < lyricsData.length; i++) {
+    if (time >= lyricsData[i].time) idx = i;
+    else break;
+  }
+  if (idx === lastLyricIdx) return;
+  lastLyricIdx = idx;
+
+  lyricEls.forEach((el, i) => {
+    const dist = i - idx;
+    el.classList.remove("active", "near");
+    if (i === idx) el.classList.add("active");
+    else if (Math.abs(dist) <= 3) el.classList.add("near");
+    el.style.visibility = Math.abs(dist) > LYRICS_HALF ? "hidden" : "";
+  });
+
+  const wrap = lyricsEl.parentElement;
+  const wrapH = wrap.clientHeight;
+  const el = lyricEls[idx];
+  const target = wrapH / 2 - el.offsetTop - el.clientHeight / 2;
+  lyricsEl.style.transform = "translateY(" + target + "px)";
+}
+
+async function loadLyrics(song) {
+  renderLyrics([]);
+  try {
+    const res = await fetch(API_BASE + "/api/lyric?songmid=" + encodeURIComponent(song.songmid));
+    if (!res.ok) throw new Error("no lyric");
+    const j = await res.json();
+    renderLyrics(parseLrc(j.lyric));
+  } catch (_) {
+    lyricsEmpty.style.display = "flex";
+  }
+}
+
+// ---- 播放核心 ----
 async function togglePlay(song, btn) {
-  // 同一首歌：切换播放/暂停
   if (audio && currentSong && currentSong.songmid === song.songmid) {
     if (audio.paused) {
       audio.play();
       setPlayBtn(btn, true);
-      playerPlay.innerHTML = ICON_PAUSE;
+      setPlayerIcons(true);
     } else {
       audio.pause();
       setPlayBtn(btn, false);
-      playerPlay.innerHTML = ICON_PLAY;
+      setPlayerIcons(false);
     }
     return;
   }
 
-  // 切歌：先停旧的
   if (audio) {
     audio.pause();
     audio.src = "";
   }
 
-  // 获取 128kbps 直链
   setPlayBtn(btn, false);
   try {
     const res = await fetch(
@@ -572,36 +657,33 @@ async function togglePlay(song, btn) {
 
     audio.addEventListener("timeupdate", () => {
       if (!audio.duration) return;
-      playerFill.style.width = (audio.currentTime / audio.duration) * 100 + "%";
-      playerCur.textContent = fmtTime(audio.currentTime);
-      playerDur.textContent = fmtTime(audio.duration);
+      const pct = (audio.currentTime / audio.duration) * 100;
+      playerFill.style.width = pct + "%";
+      npFill.style.width = pct + "%";
+      npCur.textContent = formatDuration(audio.currentTime);
+      npDur.textContent = formatDuration(audio.duration);
+      updateLyrics(audio.currentTime);
     });
     audio.addEventListener("play", () => {
-      playerPlay.innerHTML = ICON_PAUSE;
-      playerCover.classList.add("spinning");
-      playerEl.classList.add("playing");
+      setPlayerIcons(true);
       highlightPlayBtn(song.songmid);
       syncListenBtn();
     });
     audio.addEventListener("pause", () => {
-      playerPlay.innerHTML = ICON_PLAY;
-      playerCover.classList.remove("spinning");
-      playerEl.classList.remove("playing");
+      setPlayerIcons(false);
       highlightPlayBtn(song.songmid);
       syncListenBtn();
     });
     audio.addEventListener("ended", () => {
-      playerPlay.innerHTML = ICON_PLAY;
-      playerCover.classList.remove("spinning");
-      playerEl.classList.remove("playing");
+      setPlayerIcons(false);
       highlightPlayBtn(song.songmid);
       playerFill.style.width = "0%";
-      playerCur.textContent = "00:00";
+      npFill.style.width = "0%";
+      npCur.textContent = "0:00";
       syncListenBtn();
     });
     audio.addEventListener("error", () => {
-      playerPlay.innerHTML = ICON_PLAY;
-      playerCover.classList.remove("spinning");
+      setPlayerIcons(false);
       btn.innerHTML = ICON_PLAY;
       if (playBtnOf === btn) playBtnOf = null;
       syncListenBtn();
@@ -611,53 +693,69 @@ async function togglePlay(song, btn) {
     playerEl.classList.remove("hidden");
     playerName.textContent = song.songname;
     playerSinger.textContent = song.singer || "未知歌手";
+    npName.textContent = song.songname;
+    npSinger.textContent = song.singer || "未知歌手";
     playerCover.style.backgroundImage = "";
+    npCover.style.backgroundImage = "";
 
     const coverUrl = coverOf(song);
     if (coverUrl) {
       const img = new Image();
       img.onload = () => {
         playerCover.style.backgroundImage = "url(" + coverUrl + ")";
-        // 播放时整页氛围色随封面变化
-        try { applyTheme(extractPalette(img)); } catch (_) {}
+        npCover.style.backgroundImage = "url(" + coverUrl + ")";
+        try { applyCoverTheme(extractPalette(img)); } catch (_) {}
       };
       img.src = coverUrl;
     }
 
     await audio.play();
     setPlayBtn(btn, true);
-    playerPlay.innerHTML = ICON_PAUSE;
-    playerCover.classList.add("spinning");
+    setPlayerIcons(true);
+    loadLyrics(song); // 异步加载歌词，不阻塞播放
   } catch (err) {
     btn.innerHTML = ICON_PLAY;
     statusEl.innerHTML = "<p>播放失败：" + escapeHtml(err.message) + "</p>";
   }
 }
 
-// 播放器控制
+function setPlayerIcons(playing) {
+  playerPlay.innerHTML = playing ? ICON_PAUSE : ICON_PLAY;
+  npPlay.innerHTML = playing ? ICON_PAUSE : ICON_PLAY;
+}
+
+// ---- 全屏播放页 ----
+function openNowPlaying() {
+  npEl.classList.remove("hidden");
+  document.body.style.overflow = "hidden";
+  updateLyrics(audio ? audio.currentTime : 0);
+}
+function closeNowPlaying() {
+  npEl.classList.add("hidden");
+  document.body.style.overflow = "";
+}
+playerBody.addEventListener("click", openNowPlaying);
+playerExpand.addEventListener("click", openNowPlaying);
+npClose.addEventListener("click", closeNowPlaying);
+npHandle.addEventListener("click", closeNowPlaying);
+
 playerPlay.addEventListener("click", () => {
   if (!audio || !currentSong) return;
   if (audio.paused) audio.play();
   else audio.pause();
 });
-playerClose.addEventListener("click", () => {
-  if (audio) { audio.pause(); audio.src = ""; }
-  currentSong = null;
-  playerEl.classList.add("hidden");
-  playerEl.classList.remove("playing");
-  playerCover.classList.remove("spinning");
-  highlightPlayBtn("");
-  playerFill.style.width = "0%";
-  playerCur.textContent = "00:00";
-  playerDur.textContent = "00:00";
-  syncListenBtn();
+npPlay.addEventListener("click", () => {
+  if (!audio || !currentSong) return;
+  if (audio.paused) audio.play();
+  else audio.pause();
 });
 
-// 进度条点击跳转
-const playerTrack = document.querySelector(".progress-track");
-playerTrack.addEventListener("click", (e) => {
+// 全屏进度条点击跳转
+npTrack.addEventListener("click", (e) => {
   if (!audio || !audio.duration) return;
-  const rect = playerTrack.getBoundingClientRect();
+  const rect = npTrack.getBoundingClientRect();
   const ratio = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
   audio.currentTime = ratio * audio.duration;
+  npFill.style.width = ratio * 100 + "%";
+  updateLyrics(audio.currentTime);
 });
