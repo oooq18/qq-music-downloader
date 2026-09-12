@@ -9,28 +9,12 @@ const QUALITY_LABELS = { flac: "FLAC 无损", 320: "320kbps", 128: "128kbps" };
 const QUALITY_SIZE_KEYS = { flac: "sizeflac", 320: "size320", 128: "size128" };
 const downloadStates = new Map();
 let currentSongs = [];
-const source = "qq"; // 固定 QQ 音乐源
 
 // 音频地址统一走代理（部分 CDN 无 CORS 头，浏览器无法直连）
 function streamUrl(u) {
   if (!u) return u;
   return (API_BASE || "") + "/api/stream?url=" + encodeURIComponent(u);
 }
-
-// ---- 音乐源切换 ----
-document.querySelectorAll(".src-btn").forEach((btn) => {
-  btn.addEventListener("click", () => {
-    // 停止当前播放并清空列表
-    if (audio) { audio.pause(); audio.src = ""; audio = null; }
-    currentSong = null;
-    playerEl.classList.add("hidden");
-    npEl.classList.add("hidden");
-    listEl.innerHTML = "";
-    metaEl.textContent = "";
-    statusEl.innerHTML = "";
-    if (keywordEl.value.trim()) handleSearch();
-  });
-});
 
 // 图标（内联 SVG，不用 emoji）
 const ICON_PLAY = '<svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
@@ -180,7 +164,7 @@ async function handleSearch() {
   metaEl.textContent = "";
   listEl.innerHTML = "";
   try {
-    const res = await fetch(API_BASE + "/api/music/search?q=" + encodeURIComponent(kw) + "&pageSize=20&source=" + source);
+    const res = await fetch(API_BASE + "/api/music/search?q=" + encodeURIComponent(kw) + "&pageSize=20");
     if (!res.ok) throw new Error("搜索请求失败");
     const data = await res.json();
     if (!data.items || data.items.length === 0) {
@@ -190,7 +174,7 @@ async function handleSearch() {
     }
     statusEl.innerHTML = "";
     metaEl.innerHTML = "共找到 <b>" + data.total + "</b> 首歌曲";
-    currentSongs = data.items.map((s) => Object.assign(s, { source }));
+    currentSongs = [...data.items];
     renderSongs(currentSongs);
     // 用首曲封面驱动页面氛围
     const first = currentSongs[0];
