@@ -588,34 +588,6 @@ function parseLrc(lrcText) {
   return out;
 }
 
-// 同时间戳多行（原文+译文）合并为一行
-function mergeSameTime(list) {
-  const out = [];
-  list.forEach((row) => {
-    const last = out[out.length - 1];
-    if (last && Math.abs(last.time - row.time) < 0.05 && !last.trans) {
-      last.trans = row.text;
-    } else {
-      out.push({ ...row });
-    }
-  });
-  return out;
-}
-
-// 把翻译 LRC 合并到原文：翻译行时间与某原文行相差 ≤ 2.5s 时挂到该行
-function mergeTrans(list, transList) {
-  if (!list.length || !transList.length) return list;
-  let ti = 0;
-  const result = list.map((row) => ({ ...row }));
-  transList.forEach((t) => {
-    while (ti < result.length && result[ti].time < t.time - 2.5) ti++;
-    for (let i = ti; i < result.length && result[i].time <= t.time + 2.5; i++) {
-      if (!result[i].trans) { result[i].trans = t.text; break; }
-    }
-  });
-  return result;
-}
-
 function renderLyrics(list) {
   lyricsEl.innerHTML = "";
   lyricsData = list;
@@ -629,18 +601,7 @@ function renderLyrics(list) {
   list.forEach((item, i) => {
     const div = document.createElement("div");
     div.className = "lyric-line" + (i === 0 ? " active" : "");
-    if (item.trans) {
-      const t1 = document.createElement("span");
-      t1.className = "lyric-text";
-      t1.textContent = item.text;
-      const t2 = document.createElement("span");
-      t2.className = "lyric-trans";
-      t2.textContent = item.trans;
-      div.appendChild(t1);
-      div.appendChild(t2);
-    } else {
-      div.textContent = item.text;
-    }
+    div.textContent = item.text;
     lyricsEl.appendChild(div);
     lyricEls.push(div);
   });
@@ -676,14 +637,10 @@ function updateLyrics(time) {
 async function loadLyrics(song) {
   renderLyrics([]);
   try {
-    const res = await fetch(API_BASE + "/api/lyric?songmid=" + encodeURIComponent(song.songmid)
-      + "&name=" + encodeURIComponent(song.songname || "")
-      + "&singer=" + encodeURIComponent(song.singer || ""));
+    const res = await fetch(API_BASE + "/api/lyric?songmid=" + encodeURIComponent(song.songmid));
     if (!res.ok) throw new Error("no lyric");
     const j = await res.json();
-    const list = mergeSameTime(parseLrc(j.lyric));
-    if (j.trans) renderLyrics(mergeTrans(list, parseLrc(j.trans)));
-    else renderLyrics(list);
+    renderLyrics(parseLrc(j.lyric));
   } catch (_) {
     lyricsEmpty.style.display = "flex";
   }
