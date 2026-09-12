@@ -448,7 +448,7 @@ export default {
     const url = new URL(request.url);
     try {
       if (url.pathname === "/api/health") {
-        return json({ ok: true, authed: Boolean(env.QQ && env.AUTHST) });
+        return json({ ok: true, authed: Boolean(env.QQ && env.AUTHST), ncAuthed: Boolean(env.NC_COOKIE) });
       }
       if (url.pathname === "/api/music/search") {
         const q = (url.searchParams.get("q") || "").trim();

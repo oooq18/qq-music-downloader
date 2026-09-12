@@ -10,6 +10,13 @@ const QUALITY_SIZE_KEYS = { flac: "sizeflac", 320: "size320", 128: "size128" };
 const downloadStates = new Map();
 let currentSongs = [];
 let source = "qq"; // 当前音乐源：qq | netease
+let ncAuthed = false; // 网易云会员登录态
+
+// 初始化时探测网易云登录状态
+fetch(API_BASE + "/api/health")
+  .then((r) => r.json())
+  .then((j) => { ncAuthed = Boolean(j.ncAuthed); })
+  .catch(() => {});
 
 // ---- 音乐源切换 ----
 document.querySelectorAll(".src-btn").forEach((btn) => {
@@ -358,7 +365,7 @@ function renderDlRow(song, q) {
       '<span class="dl-size">' + (size ? formatSize(size) : "") + "</span>" +
       '<span class="dl-status">' + ICON_RETRY + " 重试</span>";
     row.addEventListener("click", () => startDownload(song, q));
-  } else if (song.vip && song.source === "netease") {
+  } else if (song.vip && song.source === "netease" && !ncAuthed) {
     row.classList.add("unavailable");
     row.disabled = true;
     row.title = "网易云 VIP 歌曲，未登录网易云会员";
@@ -367,7 +374,7 @@ function renderDlRow(song, q) {
       '<span class="dl-tag">VIP</span>' +
       '<span class="dl-size">' + (size ? formatSize(size) : "") + "</span>" +
       '<span class="dl-status">需VIP</span>';
-  } else if (!size) {
+  } else if (!size && song.source !== "netease") {
     row.classList.add("unavailable");
     row.disabled = true;
     row.title = "该音质不可用";
@@ -697,7 +704,7 @@ async function loadLyrics(song) {
 
 // ---- 播放核心 ----
 async function togglePlay(song, btn) {
-  if (song.vip && song.source === "netease") {
+  if (song.vip && song.source === "netease" && !ncAuthed) {
     if (btn) { btn.disabled = true; btn.title = "网易云 VIP 歌曲"; setTimeout(() => { btn.disabled = false; }, 1500); }
     statusEl.innerHTML = "<p>该歌曲为网易云 VIP 歌曲，未登录会员无法试听</p>";
     headerStatus.textContent = "VIP ONLY";

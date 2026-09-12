@@ -332,7 +332,7 @@ app.get("/api/lyric", async (req, res) => {
 });
 
 // 健康检查
-app.get("/api/health", (req, res) => res.json({ ok: true, authed: Boolean(QQ && AUTHST) }));
+app.get("/api/health", (req, res) => res.json({ ok: true, authed: Boolean(QQ && AUTHST), ncAuthed: Boolean(NC_COOKIE) }));
 
 // 托管前端静态文件（部署到 Render 时一键全栈）
 const clientDir = path.join(__dirname, ".");
