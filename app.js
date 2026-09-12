@@ -221,11 +221,9 @@ function renderSongs(songs) {
     body.innerHTML =
       '<div class="song-name">' + escapeHtml(song.songname) + (song.vip ? '<span class="vip-tag">VIP</span>' : "") + "</div>" +
       '<div class="song-meta">' +
-        "<span>" + escapeHtml(song.singer || "未知歌手") + "</span>" +
-        '<span class="sep">/</span>' +
-        "<span>" + escapeHtml(song.albumname || "未知专辑") + "</span>" +
-        '<span class="sep">/</span>' +
-        "<span>" + formatDuration(song.interval) + "</span>" +
+        '<span class="singer">' + escapeHtml(song.singer || "未知歌手") + "</span>" +
+        '<span class="sep">·</span>' +
+        '<span class="album">' + escapeHtml(song.albumname || "未知专辑") + "</span>" +
       "</div>";
     card.appendChild(body);
 

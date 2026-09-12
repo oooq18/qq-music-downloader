@@ -87,7 +87,7 @@ async function search(keyword, page = 1, pageSize = 20) {
     songmid: s.songmid || "",
     albummid: s.albummid || "",
     songname: s.songname || "",
-    singer: (s.singer || []).map((x) => x.name).join(" / "),
+    singer: (s.singer || []).map((x) => x.name).join("、"),
     albumname: s.albumname || "",
     interval: s.interval || 0,
     sizeflac: s.sizeflac || 0,
