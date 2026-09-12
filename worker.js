@@ -364,6 +364,7 @@ async function ncSearch(keyword, page = 1, pageSize = 20, env = {}) {
       size128: 0,
       size320: 0,
       sizeflac: 0,
+      vip: (s.fee || 0) > 0,
     };
   });
   return { items, total: data.result?.songCount ?? items.length };

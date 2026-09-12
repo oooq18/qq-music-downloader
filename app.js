@@ -240,7 +240,7 @@ function renderSongs(songs) {
     const body = document.createElement("div");
     body.className = "song-body";
     body.innerHTML =
-      '<div class="song-name">' + escapeHtml(song.songname) + "</div>" +
+      '<div class="song-name">' + escapeHtml(song.songname) + (song.vip ? '<span class="vip-tag">VIP</span>' : "") + "</div>" +
       '<div class="song-meta">' +
         "<span>" + escapeHtml(song.singer || "未知歌手") + "</span>" +
         '<span class="sep">/</span>' +
@@ -358,6 +358,15 @@ function renderDlRow(song, q) {
       '<span class="dl-size">' + (size ? formatSize(size) : "") + "</span>" +
       '<span class="dl-status">' + ICON_RETRY + " 重试</span>";
     row.addEventListener("click", () => startDownload(song, q));
+  } else if (song.vip && song.source === "netease") {
+    row.classList.add("unavailable");
+    row.disabled = true;
+    row.title = "网易云 VIP 歌曲，未登录网易云会员";
+    row.innerHTML =
+      '<span class="dl-q">' + QUALITY_DESC[q].label + "</span>" +
+      '<span class="dl-tag">VIP</span>' +
+      '<span class="dl-size">' + (size ? formatSize(size) : "") + "</span>" +
+      '<span class="dl-status">需VIP</span>';
   } else if (!size) {
     row.classList.add("unavailable");
     row.disabled = true;
@@ -688,6 +697,12 @@ async function loadLyrics(song) {
 
 // ---- 播放核心 ----
 async function togglePlay(song, btn) {
+  if (song.vip && song.source === "netease") {
+    if (btn) { btn.disabled = true; btn.title = "网易云 VIP 歌曲"; setTimeout(() => { btn.disabled = false; }, 1500); }
+    statusEl.innerHTML = "<p>该歌曲为网易云 VIP 歌曲，未登录会员无法试听</p>";
+    headerStatus.textContent = "VIP ONLY";
+    return;
+  }
   if (audio && currentSong && currentSong.songmid === song.songmid) {
     if (audio.paused) {
       audio.play();
