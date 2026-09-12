@@ -132,18 +132,6 @@ body {
   box-shadow: var(--shadow);
   animation: fadeUp 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.22s both;
 }
-.src-status {
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.4px;
-  padding: 2px 10px 2px 6px;
-  color: var(--ink-2);
-  white-space: nowrap;
-  transition: color 0.35s ease;
-}
-.src-status.on {
-  color: #c9a15c;
-}
 .src-btn {
   appearance: none;
   border: none;

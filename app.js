@@ -9,57 +9,17 @@ const QUALITY_LABELS = { flac: "FLAC 无损", 320: "320kbps", 128: "128kbps" };
 const QUALITY_SIZE_KEYS = { flac: "sizeflac", 320: "size320", 128: "size128" };
 const downloadStates = new Map();
 let currentSongs = [];
-let source = "qq"; // 当前音乐源：qq | netease
-let ncAuthed = false; // 网易云会员登录态
+const source = "qq"; // 固定 QQ 音乐源
 
-// 音频地址统一走代理（网易云 CDN 无 CORS 头，浏览器无法直连）
+// 音频地址统一走代理（部分 CDN 无 CORS 头，浏览器无法直连）
 function streamUrl(u) {
   if (!u) return u;
   return (API_BASE || "") + "/api/stream?url=" + encodeURIComponent(u);
 }
 
-// 初始化时探测网易云登录状态（失败重试 3 次，避免误判未登录）
-(function probeNc() {
-  let tries = 0;
-  const doProbe = () => {
-    fetch(API_BASE + "/api/health")
-      .then((r) => r.json())
-      .then((j) => {
-        ncAuthed = Boolean(j.ncAuthed);
-        updateNcStatus();
-      })
-      .catch(() => {
-        tries++;
-        if (tries < 3) setTimeout(doProbe, 1200);
-      });
-  };
-  doProbe();
-})();
-
-function updateNcStatus() {
-  const el = document.getElementById("ncStatus");
-  if (!el) return;
-  if (source === "netease") {
-    el.textContent = ncAuthed ? "黑胶会员已解锁" : "未登录，仅免费歌曲";
-    el.classList.toggle("on", ncAuthed);
-    el.style.display = "";
-  } else {
-    el.style.display = "none";
-  }
-}
-
 // ---- 音乐源切换 ----
 document.querySelectorAll(".src-btn").forEach((btn) => {
   btn.addEventListener("click", () => {
-    const next = btn.dataset.source;
-    if (next === source) return;
-    source = next;
-    updateNcStatus();
-    document.querySelectorAll(".src-btn").forEach((b) => {
-      const on = b === btn;
-      b.classList.toggle("active", on);
-      b.setAttribute("aria-selected", on ? "true" : "false");
-    });
     // 停止当前播放并清空列表
     if (audio) { audio.pause(); audio.src = ""; audio = null; }
     currentSong = null;
@@ -207,9 +167,6 @@ function applyCoverTheme(palette) {
 }
 function coverOf(song) {
   if (!song) return "";
-  if (song.source === "netease") {
-    return song.picUrl ? API_BASE + "/api/cover?source=netease&pic=" + encodeURIComponent(song.picUrl) : "";
-  }
   return song.albummid ? API_BASE + "/api/cover?albummid=" + encodeURIComponent(song.albummid) : "";
 }
 
@@ -321,12 +278,10 @@ const dlRows = document.getElementById("dlRows");
 let panelSong = null;
 
 const QUALITY_DESC = {
-  hires: { label: "Hi-Res", tag: "Hi-Res" },
-  flac: { label: "无损 FLAC", tag: "无损" },
-  320: { label: "极高 320kbps", tag: "极高" },
-  128: { label: "标准 128kbps", tag: "标准" },
+  flac: { label: "FLAC 无损", tag: "无损" },
+  320: { label: "320kbps", tag: "高清" },
+  128: { label: "128kbps", tag: "试听" },
 };
-const NC_QUAL_ORDER = ["hires", "flac", "320", "128"]; // 网易云音质档位（黑胶会员全解锁）
 const QQ_QUAL_ORDER = ["flac", "320", "128"];
 
 function openDlPanel(song) {
@@ -360,11 +315,7 @@ function closeDlPanel() {
 function renderDlRows() {
   if (!panelSong) return;
   dlRows.innerHTML = "";
-  // 网易云按网易云音质档位（未登录时去掉 Hi-Res），QQ 保持原档位
-  const quals = panelSong.source === "netease"
-    ? (ncAuthed ? NC_QUAL_ORDER : NC_QUAL_ORDER.filter((q) => q !== "hires"))
-    : QQ_QUAL_ORDER;
-  quals.forEach((q, i) => {
+  QQ_QUAL_ORDER.forEach((q, i) => {
     const row = renderDlRow(panelSong, q);
     row.style.animationDelay = (0.06 + i * 0.07).toFixed(2) + "s";
     dlRows.appendChild(row);
@@ -402,16 +353,7 @@ function renderDlRow(song, q) {
       '<span class="dl-size">' + (size ? formatSize(size) : "") + "</span>" +
       '<span class="dl-status">' + ICON_RETRY + " 重试</span>";
     row.addEventListener("click", () => startDownload(song, q));
-  } else if (song.vip && song.source === "netease" && !ncAuthed) {
-    row.classList.add("unavailable");
-    row.disabled = true;
-    row.title = "网易云 VIP 歌曲，未登录网易云会员";
-    row.innerHTML =
-      '<span class="dl-q">' + QUALITY_DESC[q].label + "</span>" +
-      '<span class="dl-tag">VIP</span>' +
-      '<span class="dl-size">' + (size ? formatSize(size) : "") + "</span>" +
-      '<span class="dl-status">需VIP</span>';
-  } else if (!size && song.source !== "netease") {
+  } else if (!size) {
     row.classList.add("unavailable");
     row.disabled = true;
     row.title = "该音质不可用";
@@ -487,8 +429,7 @@ document.addEventListener("keydown", (e) => {
 async function startDownload(song, q) {
   const key = song.songmid + "-" + q;
   const size = song[QUALITY_SIZE_KEYS[q]];
-  // 网易云搜索不返回文件大小（全 0），跳过大小拦截
-  if (!size && song.source !== "netease") return;
+  if (!size) return;
   if (downloadStates.get(key)?.status === "downloading") return;
 
   downloadStates.set(key, { status: "downloading", progress: 0 });
@@ -506,9 +447,7 @@ async function startDownload(song, q) {
   const fill = bar.querySelector(".fill");
 
   try {
-    const dlParams = song.source === "netease"
-      ? "source=netease&songmid=" + encodeURIComponent(song.songmid) + "&quality=" + q
-      : "songmid=" + encodeURIComponent(song.songmid) + "&quality=" + q;
+    const dlParams = "songmid=" + encodeURIComponent(song.songmid) + "&quality=" + q;
     const [dlRes, coverBlob, lyricText] = await Promise.all([
       fetch(API_BASE + "/api/music/download?" + dlParams),
       coverOf(song)
@@ -516,9 +455,7 @@ async function startDownload(song, q) {
             .then((r) => (r.ok ? r.blob() : null))
             .catch(() => null)
         : Promise.resolve(null),
-      fetch(API_BASE + "/api/lyric?" + (song.source === "netease"
-        ? "source=netease&id=" + encodeURIComponent(song.songmid)
-        : "songmid=" + encodeURIComponent(song.songmid)))
+      fetch(API_BASE + "/api/lyric?songmid=" + encodeURIComponent(song.songmid))
         .then((r) => (r.ok ? r.json().then((j) => j.lyric || "") : ""))
         .catch(() => ""),
     ]);
@@ -556,7 +493,7 @@ async function startDownload(song, q) {
     const meta = { title: song.songname, artist: song.singer, album: song.albumname, lyric: lyricText };
     // 按实际文件扩展名判定格式（网易云部分"无损"源实为 320，避免写错 ID3 破坏文件）
     const extMatch = (data.url || "").match(/\.(flac|mp3|m4a|aac)(\?|$)/i);
-    const actualFlac = extMatch ? extMatch[1].toLowerCase() === "flac" : (q === "flac" || q === "hires") && data.level !== "exhigh";
+    const actualFlac = extMatch ? extMatch[1].toLowerCase() === "flac" : q === "flac" && data.level === "lossless";
     const finalBytes = await window.embedMetaToBytes(audioBytes, actualFlac ? "flac" : "mp3", meta, coverBlob);
     const type = actualFlac ? "audio/flac" : "audio/mpeg";
     statusEl.innerHTML = "";
@@ -728,10 +665,7 @@ function updateLyrics(time) {
 async function loadLyrics(song) {
   renderLyrics([]);
   try {
-    const lrParams = song.source === "netease"
-      ? "source=netease&id=" + encodeURIComponent(song.songmid)
-      : "songmid=" + encodeURIComponent(song.songmid);
-    const res = await fetch(API_BASE + "/api/lyric?" + lrParams);
+    const res = await fetch(API_BASE + "/api/lyric?songmid=" + encodeURIComponent(song.songmid));
     if (!res.ok) throw new Error("no lyric");
     const j = await res.json();
     renderLyrics(parseLrc(j.lyric));
@@ -742,12 +676,6 @@ async function loadLyrics(song) {
 
 // ---- 播放核心 ----
 async function togglePlay(song, btn) {
-  if (song.vip && song.source === "netease" && !ncAuthed) {
-    if (btn) { btn.disabled = true; btn.title = "网易云 VIP 歌曲"; setTimeout(() => { btn.disabled = false; }, 1500); }
-    statusEl.innerHTML = "<p>该歌曲为网易云 VIP 歌曲，未登录会员无法试听</p>";
-    headerStatus.textContent = "VIP ONLY";
-    return;
-  }
   if (audio && currentSong && currentSong.songmid === song.songmid) {
     if (audio.paused) {
       audio.play();
@@ -768,9 +696,7 @@ async function togglePlay(song, btn) {
 
   setPlayBtn(btn, false);
   try {
-    const dlParams = song.source === "netease"
-      ? "source=netease&songmid=" + encodeURIComponent(song.songmid) + "&quality=128"
-      : "songmid=" + encodeURIComponent(song.songmid) + "&quality=128";
+    const dlParams = "songmid=" + encodeURIComponent(song.songmid) + "&quality=128";
     const res = await fetch(API_BASE + "/api/music/download?" + dlParams);
     let data = {};
     try { data = await res.json(); } catch (_) {}

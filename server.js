@@ -15,8 +15,6 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // 登录态（从环境变量读取；QQ=QQ号，AUTHST=登录密钥）
 const QQ = process.env.QQ || "";
 const AUTHST = process.env.AUTHST || "";
-// 网易云登录 Cookie（可选；未配置时 128/320 可下载，无损降级 320）
-const NC_COOKIE = (process.env.NC_COOKIE || "").trim();
 
 const AES_KEY_HEX = "bd305f10d0ff74b6ef54dab835b5e1cf";
 const RESPONSE_XOR_KEY_HEX = "7a3f8c1d5e9b2f0a6c4d7e8b1f3a5c9d0e2b6f4a81";
@@ -27,112 +25,6 @@ const SEARCH_URL = "https://c.y.qq.com/soso/fcgi-bin/client_search_cp";
 const VKEY_URL = "https://u6.y.qq.com/cgi-bin/musics.fcg";
 const STREAM_BASE = "https://isure.stream.qqmusic.qq.com/";
 
-// ---- 网易云音乐 ----
-const NC_UA = "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Safari/537.36 Chrome/91.0.4472.164 NeteaseMusicDesktop/2.10.2.200154";
-const NC_REFERER = "https://music.163.com/";
-const NC_AES_KEY = "e82ckenh8dichen8";
-const NC_SEARCH_URL = "https://music.163.com/api/cloudsearch/pc";
-const NC_URL_API = "https://interface3.music.163.com/eapi/song/enhance/player/url/v1";
-const NC_LYRIC_API = "https://interface3.music.163.com/api/song/lyric";
-
-function ncCookie() {
-  return NC_COOKIE;
-}
-
-function ncEncryptParams(urlPath, payload) {
-  const digest = crypto.createHash("md5").update(`nobody${urlPath}use${JSON.stringify(payload)}md5forencrypt`).digest("hex");
-  const raw = `${urlPath}-36cd479b6b5-${JSON.stringify(payload)}-36cd479b6b5-${digest}`;
-  const cipher = crypto.createCipheriv("aes-128-ecb", Buffer.from(NC_AES_KEY), null);
-  return cipher.update(raw, "utf8", "hex") + cipher.final("hex");
-}
-
-// ---- 网易云：搜索 ----
-async function ncSearch(keyword, page = 1, pageSize = 20) {
-  const body = new URLSearchParams({ s: keyword, type: 1, limit: String(pageSize), offset: String((page - 1) * pageSize) });
-  const res = await fetch(NC_SEARCH_URL, {
-    method: "POST",
-    headers: { "User-Agent": NC_UA, Referer: NC_REFERER, Cookie: ncCookie() },
-    body,
-    signal: AbortSignal.timeout(10000),
-  });
-  if (!res.ok) throw new Error("网易云搜索服务返回 " + res.status);
-  const data = await res.json();
-  if (data.code !== 200) throw new Error("网易云搜索失败: " + (data.message || data.code));
-  const songs = data.result?.songs ?? [];
-  const items = songs.map((s) => ({
-    songmid: String(s.id),
-    songname: s.name || "",
-    singer: (s.ar || []).map((a) => a.name).join("/"),
-    albumname: s.al?.name || "",
-    albummid: s.al ? String(s.al.id) : "",
-    picUrl: s.al?.picUrl || "",
-    interval: Math.floor((s.dt || 0) / 1000),
-    size128: 0,
-    size320: 0,
-    sizeflac: 0,
-    vip: (s.fee || 0) > 0,
-  }));
-  return { items, total: data.result?.songCount ?? items.length };
-}
-
-// ---- 网易云：eapi 播放地址 ----
-async function ncGetPlayUrl(id, quality) {
-  const level = quality === "hires" ? "hires" : quality === "flac" ? "lossless" : quality === "320" ? "exhigh" : "standard";
-  const payload = {
-    ids: [id],
-    level,
-    encodeType: "flac",
-    header: JSON.stringify({ os: "pc", appver: "", osver: "", deviceId: "pyncm!" }),
-    requestId: String(Math.floor(Math.random() * 10000000 + 20000000)),
-  };
-  const params = ncEncryptParams("/api/song/enhance/player/url/v1", payload);
-  const body = new URLSearchParams({ params });
-  const res = await fetch(NC_URL_API, {
-    method: "POST",
-    headers: { "User-Agent": NC_UA, Referer: NC_REFERER, Cookie: ncCookie() },
-    body,
-    signal: AbortSignal.timeout(15000),
-  });
-  if (!res.ok) throw new Error("网易云接口返回 " + res.status);
-  const data = await res.json();
-  if (data.code !== 200) throw new Error("网易云播放地址获取失败: " + (data.message || data.code));
-  const d = data.data?.[0];
-  if (!d || !d.url) throw new Error("该歌曲在网易云需要 VIP 会员或无法获取播放地址");
-  return { url: d.url, br: d.br || 0, size: d.size || 0, level };
-}
-
-// ---- 网易云：封面代理 ----
-async function ncGetCover(picUrl, res) {
-  let img = picUrl;
-  if (!/^https?:/i.test(img)) img = "https:" + img;
-  const imgRes = await fetch(img, {
-    headers: { "User-Agent": NC_UA, Referer: NC_REFERER, Cookie: ncCookie() },
-    signal: AbortSignal.timeout(10000),
-  });
-  if (!imgRes.ok) return res.status(502).json({ message: "网易云封面获取失败" });
-  res.setHeader("Content-Type", imgRes.headers.get("content-type") || "image/jpeg");
-  res.setHeader("Cache-Control", "public, max-age=86400");
-  res.send(Buffer.from(await imgRes.arrayBuffer()));
-}
-
-// ---- 网易云：歌词 ----
-async function ncGetLyric(id) {
-  const body = new URLSearchParams({
-    id: String(id), cp: "false", tv: "0", lv: "0", rv: "0", kv: "0", yv: "0", ytv: "0", yrv: "0",
-  });
-  const res = await fetch(NC_LYRIC_API, {
-    method: "POST",
-    headers: { "User-Agent": NC_UA, Referer: NC_REFERER, Cookie: ncCookie() },
-    body,
-    signal: AbortSignal.timeout(10000),
-  });
-  if (!res.ok) throw new Error("网易云歌词接口返回 " + res.status);
-  const data = await res.json();
-  if (data.code !== 200) throw new Error("网易云歌词获取失败: " + (data.message || data.code));
-  const lyric = (data.lrc?.lyric || "").replace(/^\uFEFF/, "");
-  const tlyric = (data.tlyric?.lyric || "").replace(/^\uFEFF/, "");
-  return { lyric, tlyric };
-}
 
 function makeCookie() {
   return `uin=${QQ}; qqmusic_key=${AUTHST}; qm_keyst=${AUTHST}; tmeLoginType=1; wxuin=${QQ}`;
@@ -258,9 +150,7 @@ app.get("/api/music/search", async (req, res) => {
     if (!q) return res.status(400).json({ message: "搜索关键词不能为空" });
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const pageSize = Math.min(50, Math.max(1, parseInt(req.query.pageSize) || 20));
-    const source = String(req.query.source || "qq");
-    const data = source === "netease" ? await ncSearch(q, page, pageSize) : await search(q, page, pageSize);
-    res.json(data);
+    res.json(await search(q, page, pageSize));
   } catch (err) {
     res.status(500).json({ message: err.message || "搜索失败" });
   }
@@ -269,13 +159,8 @@ app.get("/api/music/search", async (req, res) => {
 app.get("/api/music/download", async (req, res) => {
   try {
     const id = String(req.query.songmid || req.query.hash || "");
-    const q = ["hires", "flac", "320", "128"].includes(req.query.quality) ? req.query.quality : "320";
-    const source = String(req.query.source || "qq");
+    const q = ["flac", "320", "128"].includes(req.query.quality) ? req.query.quality : "320";
     if (!id) return res.status(400).json({ message: "songmid 不能为空" });
-    if (source === "netease") {
-      const info = await ncGetPlayUrl(id, q);
-      return res.json({ url: info.url, source: "netease", level: info.level, br: info.br, size: info.size });
-    }
     const downloadUrl = await getDownloadUrl(id, q);
     res.json({ url: downloadUrl, source: "qq" });
   } catch (err) {
@@ -283,15 +168,9 @@ app.get("/api/music/download", async (req, res) => {
   }
 });
 
-// 封面（代理 QQ 音乐封面图 / 网易云封面图）
+// 封面（代理 QQ 音乐封面图）
 app.get("/api/cover", async (req, res) => {
   try {
-    const source = String(req.query.source || "qq");
-    if (source === "netease") {
-      const pic = String(req.query.pic || "");
-      if (!pic) return res.status(400).json({ message: "pic 不能为空" });
-      return await ncGetCover(pic, res);
-    }
     const albummid = String(req.query.albummid || "");
     if (!albummid) return res.status(400).json({ message: "albummid 不能为空" });
     const img = await fetch(`https://y.qq.com/music/photo_new/T002R800x800M000${albummid}_2.jpg?max_age=2592000`, {
@@ -309,12 +188,6 @@ app.get("/api/cover", async (req, res) => {
 // 歌词
 app.get("/api/lyric", async (req, res) => {
   try {
-    const source = String(req.query.source || "qq");
-    if (source === "netease") {
-      const id = String(req.query.id || "");
-      if (!id) return res.status(400).json({ message: "id 不能为空" });
-      return res.json(await ncGetLyric(id));
-    }
     const songmid = String(req.query.songmid || "");
     if (!songmid) return res.status(400).json({ message: "songmid 不能为空" });
     const lr = await fetch(
@@ -332,15 +205,15 @@ app.get("/api/lyric", async (req, res) => {
 });
 
 // 健康检查
-app.get("/api/health", (req, res) => res.json({ ok: true, authed: Boolean(QQ && AUTHST), ncAuthed: Boolean(NC_COOKIE) }));
+app.get("/api/health", (req, res) => res.json({ ok: true, authed: Boolean(QQ && AUTHST) }));
 // 音频代理：绕过 CDN 的 CORS 限制
 app.get("/api/stream", async (req, res) => {
   try {
     const target = String(req.query.url || "");
-    if (!/^https?:\/\/([\w-]+\.)*(music\.126\.net|y\.qq\.com|stream\.qqmusic\.qq\.com|qqmusic\.qq\.com)\//i.test(target)) {
+    if (!/^https?:\/\/([\w-]+\.)*(y\.qq\.com|stream\.qqmusic\.qq\.com|qqmusic\.qq\.com)\//i.test(target)) {
       return res.status(400).json({ ok: false, message: "仅允许音乐 CDN 地址" });
     }
-    const r = await fetch(target, { headers: { "User-Agent": NC_UA, Referer: NC_REFERER } });
+    const r = await fetch(target, { headers: { "User-Agent": UA, Referer: REFERER } });
     res.set("Access-Control-Allow-Origin", "*");
     res.set("Content-Type", r.headers.get("content-type") || "application/octet-stream");
     res.set("Content-Length", r.headers.get("content-length") || "");
@@ -360,5 +233,5 @@ app.get("/api/stream", async (req, res) => {
 const clientDir = path.join(__dirname, ".");
 app.use(express.static(clientDir));
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 9000;
 app.listen(PORT, () => console.log(`QQ 音乐下载器服务已启动: http://localhost:${PORT}`));
