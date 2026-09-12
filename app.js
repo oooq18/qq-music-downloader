@@ -203,8 +203,11 @@ function renderSongs(songs) {
       const img = new Image();
       img.onload = () => {
         disc.style.backgroundImage = "url(" + coverOf(song) + ")";
+        disc.classList.add("loaded");
       };
       img.src = coverOf(song);
+    } else {
+      disc.classList.add("loaded");
     }
     card.appendChild(disc);
 
@@ -284,8 +287,10 @@ function closeDlPanel() {
 function renderDlRows() {
   if (!panelSong) return;
   dlRows.innerHTML = "";
-  ["flac", "320", "128"].forEach((q) => {
-    dlRows.appendChild(renderDlRow(panelSong, q));
+  ["flac", "320", "128"].forEach((q, i) => {
+    const row = renderDlRow(panelSong, q);
+    row.style.animationDelay = (0.06 + i * 0.07).toFixed(2) + "s";
+    dlRows.appendChild(row);
   });
 }
 
@@ -537,6 +542,13 @@ function setPlayBtn(btn, playing) {
 }
 
 function highlightPlayBtn(songmid) {
+  document.querySelectorAll(".song").forEach((c) => {
+    c.classList.remove("playing-card");
+  });
+  if (songmid) {
+    const card = document.querySelector('.song[data-mid="' + songmid + '"]');
+    if (card && audio && !audio.paused) card.classList.add("playing-card");
+  }
   document.querySelectorAll(".song-play").forEach((b) => {
     setPlayBtn(b, b.dataset.mid === songmid && audio && !audio.paused);
   });

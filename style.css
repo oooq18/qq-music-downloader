@@ -29,7 +29,9 @@ body {
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
   overflow-x: hidden;
+  animation: pageIn 0.55s ease both;
 }
+@keyframes pageIn { from { opacity: 0; } to { opacity: 1; } }
 
 /* ---- 背景渐变（随封面变化） ---- */
 .ambient {
@@ -94,7 +96,11 @@ body {
   transition: background 0.3s;
 }
 .header-status.live { color: var(--ink); }
-.header-status.live .dot { background: #30b254; box-shadow: 0 0 0 3px rgba(48, 178, 84, 0.18); }
+.header-status.live .dot { background: #30b254; box-shadow: 0 0 0 3px rgba(48, 178, 84, 0.18); animation: dotPulse 2.2s ease-in-out infinite; }
+@keyframes dotPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(48, 178, 84, 0.45); }
+  50% { box-shadow: 0 0 0 6px rgba(48, 178, 84, 0); }
+}
 
 /* ---- Hero ---- */
 .hero { padding: 26px 4px 30px; }
@@ -103,12 +109,14 @@ body {
   line-height: 1.08;
   font-weight: 800;
   letter-spacing: -1.2px;
+  animation: fadeUp 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.05s both;
 }
 .hero-sub {
   margin-top: 10px;
   font-size: 15px;
   color: var(--ink-2);
   letter-spacing: 0.2px;
+  animation: fadeUp 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.16s both;
 }
 .search-box {
   margin-top: 24px;
@@ -124,6 +132,11 @@ body {
   box-shadow: var(--shadow);
   color: var(--ink-2);
   transition: box-shadow 0.25s;
+  animation: fadeUp 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.28s both;
+}
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 .search-box:focus-within {
   box-shadow: 0 12px 44px rgba(0, 0, 0, 0.12), 0 0 0 3px rgba(0, 0, 0, 0.04);
@@ -205,6 +218,14 @@ body {
   to { opacity: 1; transform: translateY(0); }
 }
 .song:hover { transform: translateY(-2px); box-shadow: 0 14px 44px rgba(0, 0, 0, 0.1); }
+.song.playing-card {
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.14), 0 14px 44px rgba(0, 0, 0, 0.1);
+}
+.song.playing-card .song-disc { animation: discGlow 2.6s ease-in-out infinite; }
+@keyframes discGlow {
+  0%, 100% { box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.06), 0 0 0 0 rgba(0, 0, 0, 0.12); }
+  50% { box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.06), 0 0 0 6px rgba(0, 0, 0, 0.05); }
+}
 
 .song-disc {
   width: 52px; height: 52px;
@@ -213,7 +234,14 @@ body {
   background: #e9e9ee center/cover no-repeat;
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.06);
   position: relative;
+  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.3s;
 }
+.song-disc.loaded { animation: coverIn 0.55s cubic-bezier(0.22, 1, 0.36, 1); }
+@keyframes coverIn {
+  from { opacity: 0; transform: scale(0.94); }
+  to { opacity: 1; transform: scale(1); }
+}
+.song:hover .song-disc { transform: scale(1.06) rotate(-2deg); }
 .song-disc::after {
   content: "";
   position: absolute;
@@ -257,10 +285,17 @@ body {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.22s;
 }
-.song-play:hover { background: var(--ink); color: #fff; }
+.song-play svg { transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.song-play:hover { background: var(--ink); color: #fff; transform: scale(1.08); }
+.song-play:active { transform: scale(0.9); }
 .song-play.playing { background: var(--ink); color: #fff; }
+.song-play.playing svg { animation: iconBreathe 1.4s ease-in-out infinite; }
+@keyframes iconBreathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(0.82); }
+}
 
 .dl-open {
   display: inline-flex;
@@ -275,10 +310,22 @@ body {
   font-weight: 600;
   padding: 9px 13px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.22s;
   font-variant-numeric: tabular-nums;
+  position: relative;
+  overflow: hidden;
 }
+.dl-open::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(120deg, transparent 30%, rgba(255, 255, 255, 0.5) 50%, transparent 70%);
+  transform: translateX(-120%);
+  transition: transform 0.5s;
+}
+.dl-open:hover::after { transform: translateX(120%); }
 .dl-open:hover { background: var(--ink); color: #fff; }
+.dl-open:active { transform: scale(0.95); }
 .dl-open.busy { background: rgba(0, 0, 0, 0.08); }
 .dl-open.done { background: rgba(48, 178, 84, 0.14); color: #1f8a45; }
 .dl-open.error { background: rgba(240, 50, 75, 0.12); color: #d51f3d; }
@@ -411,7 +458,11 @@ body {
   flex-shrink: 0;
   transition: background 0.2s;
 }
+.player-play svg { transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
 .player-play:hover, .player-expand:hover { background: rgba(0, 0, 0, 0.06); }
+.player-play:active svg, .player-expand:active { transform: scale(0.82); }
+.player-expand svg { transition: transform 0.3s; }
+.player-expand:hover svg { transform: translateY(2px); }
 
 /* ============================================================
    正在播放全屏页
@@ -475,6 +526,11 @@ body {
   justify-content: center;
   padding: 26px 0 20px;
   flex-shrink: 0;
+  animation: npPop 0.65s cubic-bezier(0.22, 1, 0.36, 1) 0.1s both;
+}
+@keyframes npPop {
+  from { opacity: 0; transform: scale(0.9) translateY(20px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
 }
 .np-cover {
   width: min(62vw, 300px);
@@ -483,7 +539,9 @@ body {
   background: rgba(255, 255, 255, 0.08) center/cover no-repeat;
   box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.12);
   position: relative;
+  transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
 }
+.np-cover-wrap:hover .np-cover { transform: scale(1.03) rotate(-1deg); }
 .np-cover .disc-hole {
   position: absolute;
   left: 50%; top: 50%;
@@ -494,7 +552,7 @@ body {
   box-shadow: inset 0 0 0 3px rgba(255, 255, 255, 0.85);
 }
 
-.np-info { text-align: center; flex-shrink: 0; }
+.np-info { text-align: center; flex-shrink: 0; animation: fadeUp 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.2s both; }
 .np-name {
   font-size: 23px;
   font-weight: 800;
@@ -512,7 +570,7 @@ body {
   text-overflow: ellipsis;
 }
 
-.np-progress { margin-top: 26px; flex-shrink: 0; }
+.np-progress { margin-top: 26px; flex-shrink: 0; animation: fadeUp 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.28s both; }
 .np-track {
   height: 5px;
   border-radius: 3px;
@@ -520,11 +578,13 @@ body {
   cursor: pointer;
   position: relative;
 }
+.np-track:hover .np-fill { filter: brightness(1.2); }
 .np-fill {
   height: 100%;
   border-radius: 3px;
   background: #fff;
   width: 0%;
+  transition: width 0.2s linear, filter 0.2s;
 }
 .np-time {
   margin-top: 9px;
@@ -541,6 +601,7 @@ body {
   justify-content: center;
   margin-top: 18px;
   flex-shrink: 0;
+  animation: fadeUp 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.36s both;
 }
 .np-play {
   width: 64px; height: 64px;
@@ -554,8 +615,10 @@ body {
   justify-content: center;
   transition: background 0.2s, transform 0.15s;
 }
-.np-play:hover { background: rgba(255, 255, 255, 0.24); }
-.np-play:active { transform: scale(0.94); }
+.np-play svg { transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.np-play:hover { background: rgba(255, 255, 255, 0.24); transform: scale(1.05); }
+.np-play:active { transform: scale(0.92); }
+.np-play:active svg { transform: scale(0.85); }
 
 /* ---- 滚动歌词（Apple Music 式） ---- */
 .np-lyrics-wrap {
@@ -566,6 +629,11 @@ body {
   overflow: hidden;
   mask-image: linear-gradient(180deg, transparent 0, #000 18%, #000 82%, transparent 100%);
   -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 18%, #000 82%, transparent 100%);
+  animation: fadeInUp 0.8s ease 0.42s both;
+}
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 .np-lyrics {
   position: absolute;
@@ -598,6 +666,13 @@ body {
   font-size: 14px;
   letter-spacing: 2px;
   color: rgba(255, 255, 255, 0.4);
+}
+
+/* ---- 歌词：超长自动换行 ---- */
+.lyric-line {
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 /* ---- 横屏 / 宽屏：左封面右歌词（Apple Music 分栏） ---- */
@@ -635,12 +710,42 @@ body {
   .np-time { font-size: 12.5px; }
 }
 
-@media (orientation: landscape) and (max-width: 760px) {
-  .now-playing { padding: 14px 20px 20px; grid-template-columns: 46% 1fr; }
-  .np-cover { width: min(36vh, 240px); height: min(36vh, 240px); }
-  .np-name { font-size: 19px; }
-  .lyric-line { font-size: 15px; padding: 8px 0; }
-  .lyric-line.active { font-size: 18px; }
+/* 手机横屏（矮视口）：压缩封面与间距 */
+@media (orientation: landscape) and (max-height: 480px) {
+  .now-playing { padding: 12px 20px 16px; grid-template-columns: minmax(240px, 44%) 1fr; }
+  .np-cover-wrap { padding: 10px 0 8px; }
+  .np-cover { width: min(30vh, 190px); height: min(30vh, 190px); border-radius: 14px; }
+  .np-name { font-size: 17px; }
+  .np-singer { font-size: 13px; margin-top: 3px; }
+  .np-progress { margin-top: 12px; }
+  .np-controls { margin-top: 8px; }
+  .np-play { width: 52px; height: 52px; }
+  .np-lyrics-wrap { margin-top: 0; }
+  .lyric-line { font-size: 14px; padding: 6px 0; }
+  .lyric-line.active { font-size: 16.5px; }
+}
+
+/* 平板/桌面横屏（高视口）：更大封面 */
+@media (orientation: landscape) and (min-height: 560px) {
+  .np-cover { width: min(44vh, 380px); height: min(44vh, 380px); }
+  .lyric-line { font-size: 19px; padding: 12px 0; }
+  .lyric-line.active { font-size: 23px; }
+}
+
+/* 超宽屏 */
+@media (orientation: landscape) and (min-width: 1600px) {
+  .now-playing { grid-template-columns: minmax(420px, 38%) 1fr; padding: 26px 60px 34px; }
+  .np-cover { width: min(46vh, 460px); height: min(46vh, 460px); }
+  .lyric-line { font-size: 21px; padding: 14px 0; }
+  .lyric-line.active { font-size: 26px; }
+}
+
+/* 竖屏平板：封面放大 */
+@media (orientation: portrait) and (min-width: 561px) {
+  .np-cover { width: min(54vw, 380px); height: min(54vw, 380px); }
+  .np-name { font-size: 26px; }
+  .lyric-line { font-size: 17px; padding: 11px 0; }
+  .lyric-line.active { font-size: 21px; }
 }
 
 /* ============================================================
@@ -761,8 +866,23 @@ body {
   transition: all 0.2s;
   position: relative;
   overflow: hidden;
+  animation: rowIn 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
+@keyframes rowIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.dl-row::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(120deg, transparent 35%, rgba(255, 255, 255, 0.6) 50%, transparent 65%);
+  transform: translateX(-130%);
+  transition: transform 0.5s;
+}
+.dl-row:hover::after { transform: translateX(130%); }
 .dl-row:hover:not(:disabled) { background: rgba(0, 0, 0, 0.06); }
+.dl-row:active:not(:disabled) { transform: scale(0.985); }
 .dl-row:disabled { cursor: default; }
 .dl-row .dl-q {
   font-size: 15px;
