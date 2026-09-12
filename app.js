@@ -29,7 +29,6 @@ const playerSinger = document.getElementById("playerSinger");
 const playerFill = document.getElementById("playerFill");
 const playerPlay = document.getElementById("playerPlay");
 const playerBody = document.getElementById("playerBody");
-const playerExpand = document.getElementById("playerExpand");
 
 const npEl = document.getElementById("nowPlaying");
 const npCover = document.getElementById("npCover");
@@ -276,12 +275,18 @@ function openDlPanel(song) {
     img.src = coverUrl;
   }
   renderDlRows();
+  dlModal.classList.remove("closing");
   dlModal.classList.remove("hidden");
 }
 
 function closeDlPanel() {
-  dlModal.classList.add("hidden");
-  panelSong = null;
+  if (dlModal.classList.contains("hidden") || dlModal.classList.contains("closing")) return;
+  dlModal.classList.add("closing");
+  setTimeout(() => {
+    dlModal.classList.add("hidden");
+    dlModal.classList.remove("closing");
+    panelSong = null;
+  }, 260);
 }
 
 function renderDlRows() {
@@ -738,16 +743,21 @@ function setPlayerIcons(playing) {
 
 // ---- 全屏播放页 ----
 function openNowPlaying() {
+  npEl.classList.remove("closing");
   npEl.classList.remove("hidden");
   document.body.style.overflow = "hidden";
   updateLyrics(audio ? audio.currentTime : 0);
 }
 function closeNowPlaying() {
-  npEl.classList.add("hidden");
-  document.body.style.overflow = "";
+  if (npEl.classList.contains("hidden") || npEl.classList.contains("closing")) return;
+  npEl.classList.add("closing");
+  setTimeout(() => {
+    npEl.classList.add("hidden");
+    npEl.classList.remove("closing");
+    document.body.style.overflow = "";
+  }, 300);
 }
 playerBody.addEventListener("click", openNowPlaying);
-playerExpand.addEventListener("click", openNowPlaying);
 npClose.addEventListener("click", closeNowPlaying);
 npHandle.addEventListener("click", closeNowPlaying);
 

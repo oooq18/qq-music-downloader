@@ -445,7 +445,7 @@ body {
   width: 0%;
 }
 
-.player-play, .player-expand {
+.player-play {
   border: none;
   background: transparent;
   color: var(--ink);
@@ -459,10 +459,8 @@ body {
   transition: background 0.2s;
 }
 .player-play svg { transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
-.player-play:hover, .player-expand:hover { background: rgba(0, 0, 0, 0.06); }
-.player-play:active svg, .player-expand:active { transform: scale(0.82); }
-.player-expand svg { transition: transform 0.3s; }
-.player-expand:hover svg { transform: translateY(2px); }
+.player-play:hover { background: rgba(0, 0, 0, 0.06); }
+.player-play:active svg { transform: scale(0.82); }
 
 /* ============================================================
    正在播放全屏页
@@ -486,6 +484,11 @@ body {
   to { opacity: 1; transform: translateY(0); }
 }
 .now-playing.hidden { display: none; }
+.now-playing.closing { animation: npDown 0.3s cubic-bezier(0.4, 0, 1, 1) forwards; }
+@keyframes npDown {
+  from { opacity: 1; transform: translateY(0); }
+  to { opacity: 0; transform: translateY(70px); }
+}
 
 .np-handle {
   width: 40px; height: 4.5px;
@@ -760,6 +763,13 @@ body {
   justify-content: center;
 }
 .dl-modal.hidden { display: none; }
+.dl-modal.closing .dl-mask { animation: fadeOut 0.25s ease forwards; }
+.dl-modal.closing .dl-panel { animation: slideDown 0.28s cubic-bezier(0.4, 0, 1, 1) forwards; }
+@keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
+@keyframes slideDown {
+  from { transform: translateY(0); opacity: 1; }
+  to { transform: translateY(46px); opacity: 0; }
+}
 .dl-mask {
   position: absolute;
   inset: 0;
