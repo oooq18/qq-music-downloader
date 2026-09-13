@@ -977,3 +977,39 @@ body {
   .lyric-line { font-size: 15px; }
   .lyric-line.active { font-size: 18px; }
 }
+
+/* ---- 分页 ---- */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin: 22px 0 6px;
+}
+.pagination.hidden { display: none; }
+.page-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: var(--ink);
+  border-radius: 999px;
+  padding: 8px 20px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+.page-btn:hover:not(:disabled) {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.page-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.page-info {
+  font-size: 13px;
+  color: var(--ink-dim, #9aa4b2);
+  min-width: 58px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}

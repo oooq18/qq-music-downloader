@@ -9,6 +9,15 @@ const QUALITY_LABELS = { flac: "FLAC 无损", 320: "320kbps", 128: "128kbps" };
 const QUALITY_SIZE_KEYS = { flac: "sizeflac", 320: "size320", 128: "size128" };
 const downloadStates = new Map();
 let currentSongs = [];
+let currentPage = 1;
+let currentTotal = 0;
+let currentKw = "";
+const PAGE_SIZE = 20;
+
+const paginationEl = document.getElementById("pagination");
+const prevPageBtn = document.getElementById("prevPage");
+const nextPageBtn = document.getElementById("nextPage");
+const pageInfoEl = document.getElementById("pageInfo");
 
 // 音频地址统一走代理（部分 CDN 无 CORS 头，浏览器无法直连）
 function streamUrl(u) {
@@ -154,9 +163,11 @@ function coverOf(song) {
   return song.albummid ? API_BASE + "/api/cover?albummid=" + encodeURIComponent(song.albummid) : "";
 }
 
-async function handleSearch() {
+async function handleSearch(page = 1) {
   const kw = keywordEl.value.trim();
   if (!kw) return;
+  currentKw = kw;
+  currentPage = page;
   searchBtn.disabled = true;
   searchBtn.textContent = "搜索中...";
   headerStatus.textContent = "SEARCHING";
@@ -164,18 +175,32 @@ async function handleSearch() {
   metaEl.textContent = "";
   listEl.innerHTML = "";
   try {
-    const res = await fetch(API_BASE + "/api/music/search?q=" + encodeURIComponent(kw) + "&pageSize=20");
+    const res = await fetch(API_BASE + "/api/music/search?q=" + encodeURIComponent(kw) + "&page=" + page + "&pageSize=" + PAGE_SIZE);
     if (!res.ok) throw new Error("搜索请求失败");
     const data = await res.json();
     if (!data.items || data.items.length === 0) {
       statusEl.innerHTML = "<p>没有找到相关歌曲，换个关键词试试</p>";
       headerStatus.textContent = "EMPTY";
+      paginationEl.classList.add("hidden");
       return;
     }
     statusEl.innerHTML = "";
-    metaEl.innerHTML = "共找到 <b>" + data.total + "</b> 首歌曲";
+    currentTotal = data.total || 0;
+    const totalPages = Math.max(1, Math.ceil(currentTotal / PAGE_SIZE));
+    const from = (page - 1) * PAGE_SIZE + 1;
+    const to = from + data.items.length - 1;
+    metaEl.innerHTML = "共找到 <b>" + currentTotal + "</b> 首 · 第 <b>" + page + "</b>/" + totalPages + " 页 · 显示 " + from + "-" + to + " 首";
     currentSongs = [...data.items];
     renderSongs(currentSongs);
+    // 分页控件
+    if (currentTotal > PAGE_SIZE) {
+      paginationEl.classList.remove("hidden");
+      pageInfoEl.textContent = page + " / " + totalPages;
+      prevPageBtn.disabled = page <= 1;
+      nextPageBtn.disabled = page >= totalPages || currentTotal <= PAGE_SIZE;
+    } else {
+      paginationEl.classList.add("hidden");
+    }
     // 用首曲封面驱动页面氛围
     const first = currentSongs[0];
     if (first && first.albummid) {
@@ -183,7 +208,7 @@ async function handleSearch() {
       img.onload = () => { try { applyCoverTheme(extractPalette(img)); } catch (_) {} };
       img.src = coverOf(first);
     }
-    headerStatus.textContent = "FOUND " + data.total;
+    headerStatus.textContent = "FOUND " + currentTotal;
     headerStatus.classList.add("live");
   } catch (err) {
     statusEl.innerHTML = "<p>搜索失败：" + escapeHtml(err.message) + "</p>";
@@ -193,6 +218,14 @@ async function handleSearch() {
     searchBtn.textContent = "搜索";
   }
 }
+
+prevPageBtn.addEventListener("click", () => {
+  if (currentPage > 1) { scrollTo({ top: 0, behavior: "smooth" }); handleSearch(currentPage - 1); }
+});
+nextPageBtn.addEventListener("click", () => {
+  const totalPages = Math.max(1, Math.ceil(currentTotal / PAGE_SIZE));
+  if (currentPage < totalPages) { scrollTo({ top: 0, behavior: "smooth" }); handleSearch(currentPage + 1); }
+});
 
 function renderSongs(songs) {
   listEl.innerHTML = "";
