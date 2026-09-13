@@ -31,6 +31,8 @@ const ICON_PAUSE = '<svg viewBox="0 0 24 24" width="13" height="13" fill="curren
 const ICON_CHECK = '<svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>';
 const ICON_RETRY = '<svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>';
 const ICON_DL = '<svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>';
+const ICON_COVER = '<svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.6"/><path d="M21 15l-5-5L5 21"/></svg>';
+const ICON_LRC = '<svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 13h6"/><path d="M9 17h6"/></svg>';
 
 // ---- 播放器状态 ----
 let audio = null;
@@ -164,6 +166,7 @@ function coverOf(song) {
 }
 
 async function handleSearch(page = 1) {
+  if (typeof page !== "number" || !isFinite(page) || page < 1) page = 1;
   const kw = keywordEl.value.trim();
   if (!kw) return;
   currentKw = kw;
@@ -220,12 +223,64 @@ async function handleSearch(page = 1) {
 }
 
 prevPageBtn.addEventListener("click", () => {
-  if (currentPage > 1) { scrollTo({ top: 0, behavior: "smooth" }); handleSearch(currentPage - 1); }
+  if (currentPage <= 1) return;
+  try { window.scrollTo(0, 0); } catch (_) {}
+  handleSearch(currentPage - 1);
 });
 nextPageBtn.addEventListener("click", () => {
   const totalPages = Math.max(1, Math.ceil(currentTotal / PAGE_SIZE));
-  if (currentPage < totalPages) { scrollTo({ top: 0, behavior: "smooth" }); handleSearch(currentPage + 1); }
+  if (currentPage >= totalPages) return;
+  try { window.scrollTo(0, 0); } catch (_) {}
+  handleSearch(currentPage + 1);
 });
+
+// ---- 单独下载封面 / 歌词 ----
+let toastTimer = null;
+function toast(msg) {
+  let t = document.getElementById("toast");
+  if (!t) {
+    t = document.createElement("div");
+    t.id = "toast";
+    t.className = "toast";
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove("show"), 1800);
+}
+function sanitizeName(s) {
+  return (s || "").replace(/[\\/:*?"<>|\u0000-\u001f]/g, "_");
+}
+function triggerDownload(blob, name) {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+}
+async function downloadCover(song) {
+  const url = coverOf(song);
+  if (!url) { toast("这首歌没有封面"); return; }
+  try {
+    const r = await fetch(url);
+    if (!r.ok) throw new Error("bad status");
+    const blob = await r.blob();
+    triggerDownload(blob, sanitizeName(song.songname) + "_封面.jpg");
+    toast("封面已下载");
+  } catch (_) { toast("封面下载失败"); }
+}
+async function downloadLyric(song) {
+  try {
+    const r = await fetch(API_BASE + "/api/lyric?songmid=" + encodeURIComponent(song.songmid));
+    if (!r.ok) throw new Error("bad status");
+    const d = await r.json();
+    if (!d.lyric) { toast("这首歌没有歌词"); return; }
+    triggerDownload(new Blob([d.lyric], { type: "text/plain;charset=utf-8" }), sanitizeName(song.songname) + "_歌词.lrc");
+    toast("歌词已下载");
+  } catch (_) { toast("歌词下载失败"); }
+}
 
 function renderSongs(songs) {
   listEl.innerHTML = "";
@@ -277,6 +332,22 @@ function renderSongs(songs) {
     dlBtn.title = "选择音质并下载";
     dlBtn.addEventListener("click", () => openDlPanel(song));
     actions.appendChild(dlBtn);
+
+    const coverBtn = document.createElement("button");
+    coverBtn.className = "dl-open asset-btn";
+    coverBtn.innerHTML = ICON_COVER;
+    coverBtn.title = "下载封面";
+    coverBtn.setAttribute("aria-label", "下载封面");
+    coverBtn.addEventListener("click", (e) => { e.stopPropagation(); downloadCover(song); });
+    actions.appendChild(coverBtn);
+
+    const lrcBtn = document.createElement("button");
+    lrcBtn.className = "dl-open asset-btn";
+    lrcBtn.innerHTML = ICON_LRC;
+    lrcBtn.title = "下载歌词";
+    lrcBtn.setAttribute("aria-label", "下载歌词");
+    lrcBtn.addEventListener("click", (e) => { e.stopPropagation(); downloadLyric(song); });
+    actions.appendChild(lrcBtn);
 
     card.appendChild(actions);
     listEl.appendChild(card);

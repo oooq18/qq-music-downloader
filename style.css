@@ -983,33 +983,80 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 14px;
-  margin: 22px 0 6px;
+  gap: 10px;
+  margin: 26px 0 10px;
+  padding: 10px 0 4px;
 }
 .pagination.hidden { display: none; }
 .page-btn {
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  min-width: 96px;
+  padding: 0 18px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 14px;
   color: var(--ink);
-  border-radius: 999px;
-  padding: 8px 20px;
-  font-size: 13px;
+  font-size: 14px;
   cursor: pointer;
-  transition: all 0.25s ease;
+  -webkit-tap-highlight-color: transparent;
+  transition: all 0.22s ease;
 }
-.page-btn:hover:not(:disabled) {
+.page-btn svg { width: 13px; height: 13px; }
+.page-btn:not(:disabled):hover {
   background: var(--accent);
   border-color: var(--accent);
   color: #fff;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.22);
 }
-.page-btn:disabled {
-  opacity: 0.35;
-  cursor: not-allowed;
-}
+.page-btn:not(:disabled):active { transform: scale(0.96); }
+.page-btn:disabled { opacity: 0.32; cursor: not-allowed; }
 .page-info {
-  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 74px;
+  height: 44px;
+  font-size: 14px;
   color: var(--ink-dim, #9aa4b2);
-  min-width: 58px;
-  text-align: center;
   font-variant-numeric: tabular-nums;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
 }
+.page-info b { color: var(--ink); font-weight: 700; }
+
+/* ---- 封面/歌词独立下载 ---- */
+.asset-btn {
+  width: 38px;
+  min-width: 38px;
+  padding: 0;
+  justify-content: center;
+  opacity: 0.85;
+}
+.asset-btn svg { width: 13px; height: 13px; }
+
+/* ---- 轻提示 ---- */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 120px;
+  transform: translate(-50%, 16px);
+  background: rgba(20, 24, 32, 0.92);
+  color: #fff;
+  font-size: 13px;
+  padding: 10px 18px;
+  border-radius: 999px;
+  opacity: 0;
+  pointer-events: none;
+  transition: all 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+  z-index: 2000;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  max-width: 82vw;
+  text-align: center;
+}
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
