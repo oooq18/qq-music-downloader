@@ -27,6 +27,8 @@ const STREAM_BASE = "https://isure.stream.qqmusic.qq.com/";
 
 
 function makeCookie() {
+  // 优先使用完整登录态（含 euin/uikey 等绿钻身份 cookie）
+  if (process.env.QQ_COOKIE) return process.env.QQ_COOKIE;
   return `uin=${QQ}; qqmusic_key=${AUTHST}; qm_keyst=${AUTHST}; tmeLoginType=1; wxuin=${QQ}`;
 }
 

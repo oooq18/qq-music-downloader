@@ -41,6 +41,8 @@ function bytesToBase64(bytes) {
 }
 
 function makeCookie(env) {
+  // 优先使用完整登录态（含 euin/uikey 等绿钻身份 cookie）
+  if (env.QQ_COOKIE) return env.QQ_COOKIE;
   return `uin=${env.QQ}; qqmusic_key=${env.AUTHST}; qm_keyst=${env.AUTHST}; tmeLoginType=1; wxuin=${env.QQ}`;
 }
 

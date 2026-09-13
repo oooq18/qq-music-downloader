@@ -732,6 +732,7 @@ async function togglePlay(song, btn) {
     npCover.style.backgroundImage = "";
 
     const coverUrl = coverOf(song);
+    setupMediaSession(song, coverUrl);
     if (coverUrl) {
       const img = new Image();
       img.onload = () => {
@@ -755,6 +756,47 @@ async function togglePlay(song, btn) {
 function setPlayerIcons(playing) {
   playerPlay.innerHTML = playing ? ICON_PAUSE : ICON_PLAY;
   npPlay.innerHTML = playing ? ICON_PAUSE : ICON_PLAY;
+}
+
+// ---- 系统媒体控制（锁屏/控制栏显示歌曲信息）----
+function setupMediaSession(song, coverUrl) {
+  if (!("mediaSession" in navigator)) return;
+  try {
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: song.songname || "未知歌曲",
+      artist: song.singer || "未知歌手",
+      album: song.albumname || "",
+      artwork: coverUrl ? [{ src: coverUrl, sizes: "300x300", type: "image/jpeg" }] : []
+    });
+    navigator.mediaSession.setActionHandler("play", () => { if (audio) audio.play(); });
+    navigator.mediaSession.setActionHandler("pause", () => { if (audio) audio.pause(); });
+    navigator.mediaSession.setActionHandler("seekto", (d) => {
+      if (audio && d.seekTime != null) audio.currentTime = d.seekTime;
+    });
+    navigator.mediaSession.setActionHandler("seekbackward", (d) => {
+      if (audio) audio.currentTime -= (d.seekOffset || 10);
+    });
+    navigator.mediaSession.setActionHandler("seekforward", (d) => {
+      if (audio) audio.currentTime += (d.seekOffset || 10);
+    });
+    const idx = currentSongs.findIndex((s) => s.songmid === song.songmid);
+    if (idx >= 0) {
+      navigator.mediaSession.setActionHandler("previoustrack", () => {
+        if (idx > 0) togglePlay(currentSongs[idx - 1], document.querySelector('.song-play[data-mid="' + currentSongs[idx - 1].songmid + '"]'));
+      });
+      navigator.mediaSession.setActionHandler("nexttrack", () => {
+        if (idx < currentSongs.length - 1) togglePlay(currentSongs[idx + 1], document.querySelector('.song-play[data-mid="' + currentSongs[idx + 1].songmid + '"]'));
+      });
+    }
+    const syncMs = () => {
+      navigator.mediaSession.playbackState = !audio ? "none" : (audio.paused ? "paused" : "playing");
+    };
+    audio.addEventListener("play", syncMs);
+    audio.addEventListener("pause", syncMs);
+    audio.addEventListener("ended", syncMs);
+    audio.addEventListener("error", syncMs);
+    syncMs();
+  } catch (_) {}
 }
 
 // ---- 全屏播放页 ----
