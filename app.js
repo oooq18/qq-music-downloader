@@ -46,14 +46,14 @@ function renderAccountBar() {
         ? '<span class="acc-vip">VIP</span>'
         : '<span class="acc-novip">无会员</span>';
     chip.innerHTML =
-      "<span>" + escapeHtml(a.name) + "</span>" +
+      '<span class="acc-name">' + escapeHtml(a.name) + "</span>" +
       '<span class="acc-qq">' + escapeHtml(a.qq) + "</span>" +
       badge;
     chip.addEventListener("click", () => {
       currentAccount = a.qq;
       localStorage.setItem(ACCOUNT_KEY, currentAccount);
       renderAccountBar();
-      toast("已切换下载账号：" + a.name + (a.vip ? "（VIP）" : ""));
+      toast(a.name + (a.vip ? " · VIP 已启用" : " · 免费音质"), "gold");
     });
     accountBarEl.appendChild(chip);
   });
@@ -293,7 +293,7 @@ nextPageBtn.addEventListener("click", () => {
 
 // ---- 单独下载封面 / 歌词 ----
 let toastTimer = null;
-function toast(msg) {
+function toast(msg, variant) {
   let t = document.getElementById("toast");
   if (!t) {
     t = document.createElement("div");
@@ -302,6 +302,7 @@ function toast(msg) {
     document.body.appendChild(t);
   }
   t.textContent = msg;
+  t.className = "toast" + (variant === "gold" ? " gold" : "");
   t.classList.add("show");
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => t.classList.remove("show"), 1800);

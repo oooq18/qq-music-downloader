@@ -159,61 +159,73 @@ body {
 /* ---- 下载账号切换条 ---- */
 .account-bar {
   margin-top: 14px;
-  display: flex;
+  display: inline-flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
+  background: var(--glass);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 4px;
+  animation: fadeUp 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.4s both;
 }
 .account-chip {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  border: 1px solid var(--line);
-  background: var(--glass);
-  -webkit-backdrop-filter: blur(20px) saturate(160%);
-  backdrop-filter: blur(20px) saturate(160%);
-  border-radius: 999px;
-  padding: 7px 13px;
+  gap: 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  border-radius: 9px;
+  padding: 7px 12px;
   font-size: 13px;
   color: var(--ink-2);
   cursor: pointer;
-  transition: border-color 0.25s, background 0.25s, box-shadow 0.25s, transform 0.15s;
-  animation: fadeUp 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.4s both;
+  transition: border-color 0.25s, background 0.25s, color 0.25s;
 }
-.account-chip:active { transform: scale(0.96); }
-.account-chip:hover { border-color: rgba(0, 0, 0, 0.16); }
+.account-chip:hover { background: rgba(0, 0, 0, 0.045); }
+.account-chip:active { transform: scale(0.97); }
 .account-chip.active {
-  border-color: var(--accent);
-  background: rgba(250, 45, 72, 0.08);
+  border-color: rgba(201, 161, 92, 0.55);
+  background: rgba(201, 161, 92, 0.09);
   color: var(--ink);
-  box-shadow: 0 0 0 3px rgba(250, 45, 72, 0.1);
 }
-.account-chip .acc-qq { font-variant-numeric: tabular-nums; opacity: 0.75; }
+.account-chip .acc-name { font-weight: 600; }
+.account-chip .acc-qq { font-variant-numeric: tabular-nums; opacity: 0.62; font-size: 12px; }
 .account-chip .acc-vip {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 11px;
+  display: inline-block;
+  font-size: 10px;
   font-weight: 700;
-  letter-spacing: 0.04em;
-  padding: 2px 7px;
-  border-radius: 999px;
-  color: #fff;
-  background: linear-gradient(135deg, #f6a723, #f0324b 70%);
-  box-shadow: 0 2px 8px rgba(240, 50, 75, 0.35);
+  letter-spacing: 0.5px;
+  color: #c9a15c;
+  border: 1px solid rgba(201, 161, 92, 0.45);
+  border-radius: 5px;
+  padding: 1px 6px;
+  transform: translateY(-1px);
+  line-height: 1.4;
 }
 .account-chip .acc-novip {
-  font-size: 11px;
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
   color: var(--ink-3);
   border: 1px solid var(--line);
-  border-radius: 999px;
-  padding: 2px 7px;
+  border-radius: 5px;
+  padding: 1px 6px;
+  transform: translateY(-1px);
+  line-height: 1.4;
 }
 .account-chip .acc-err {
-  font-size: 11px;
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 600;
   color: #d0021b;
   border: 1px solid rgba(208, 2, 27, 0.25);
-  border-radius: 999px;
-  padding: 2px 7px;
+  border-radius: 5px;
+  padding: 1px 6px;
+  transform: translateY(-1px);
+  line-height: 1.4;
 }
 .search-box input {
   flex: 1;
@@ -1122,3 +1134,11 @@ body {
   text-align: center;
 }
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
+.toast.gold {
+  background: rgba(255, 255, 255, 0.9);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  backdrop-filter: blur(20px) saturate(160%);
+  color: var(--ink);
+  border: 1px solid rgba(201, 161, 92, 0.45);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+}
