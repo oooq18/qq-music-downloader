@@ -159,7 +159,7 @@ body {
 /* ---- 下载账号切换条 ---- */
 .account-bar {
   margin-top: 14px;
-  display: inline-flex;
+  display: flex;
   flex-wrap: wrap;
   gap: 6px;
   background: var(--glass);
@@ -173,6 +173,9 @@ body {
 .account-chip {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  flex: 1 1 0;
+  min-width: 130px;
   gap: 8px;
   border: 1px solid transparent;
   background: transparent;
