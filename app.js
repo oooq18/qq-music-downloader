@@ -30,22 +30,6 @@ function accountParam() {
   return currentAccount ? "&account=" + encodeURIComponent(currentAccount) : "";
 }
 
-// 切换账号后刷新列表里的下载按钮提示（VIP 歌在无会员账号下显示"需VIP"）
-function refreshListVipHints() {
-  document.querySelectorAll(".song").forEach((card) => {
-    const mid = card.dataset.mid;
-    const song = currentSongs.find((s) => s.songmid === mid);
-    if (!song) return;
-    const btn = card.querySelector(".dl-open");
-    if (!btn) return;
-    if (btn.classList.contains("busy") || btn.classList.contains("done")) return;
-    const need = song.vip && !currentAccountVip;
-    btn.classList.toggle("need-vip", need);
-    btn.innerHTML = need ? "需VIP" : ICON_DL + " 下载";
-    btn.title = need ? "该歌曲仅会员可下载高音质，点击可试听/下载试听音质" : "选择音质并下载";
-  });
-}
-
 function maskQq(qq) {
   const s = String(qq || "");
   if (s.length <= 8) return s;
@@ -77,7 +61,6 @@ function renderAccountBar() {
       currentAccountVip = !!a.vip;
       localStorage.setItem(ACCOUNT_KEY, currentAccount);
       renderAccountBar();
-      refreshListVipHints();
       toast(a.name + (a.vip ? " · VIP 已启用" : " · 免费音质"), a.vip ? "gold" : "gray");
     });
     accountBarEl.appendChild(chip);
@@ -425,10 +408,8 @@ function renderSongs(songs) {
 
     const dlBtn = document.createElement("button");
     dlBtn.className = "dl-open";
-    const needVipHint = song.vip && !currentAccountVip;
-    dlBtn.innerHTML = needVipHint ? "需VIP" : ICON_DL + " 下载";
-    if (needVipHint) dlBtn.classList.add("need-vip");
-    dlBtn.title = needVipHint ? "该歌曲仅会员可下载高音质，点击可试听/下载试听音质" : "选择音质并下载";
+    dlBtn.innerHTML = ICON_DL + " 下载";
+    dlBtn.title = "选择音质并下载";
     dlBtn.addEventListener("click", () => openDlPanel(song));
     actions.appendChild(dlBtn);
 
@@ -520,7 +501,11 @@ function renderDlRow(song, q) {
   row.className = "dl-row";
   row.dataset.key = key;
 
-  const needVip = song.vip && !currentAccountVip && (q === "flac" || q === "320");
+  const needVip = currentAccountVip
+    ? false
+    : song.vip
+      ? true // VIP 歌在无会员账号下所有档位都需 VIP
+      : q === "flac" || q === "320"; // 免费歌高音质需 VIP，128 可下
 
   const state = downloadStates.get(key);
   if (state && state.status === "downloading") {
@@ -752,9 +737,7 @@ function updateListDlBtn(song, q, pct) {
   // 先清空所有状态类，避免错误/完成态残留
   btn.classList.remove("busy", "done", "error", "need-vip");
   if (pct === null) {
-    const needVipHint = song.vip && !currentAccountVip;
-    btn.innerHTML = needVipHint ? "需VIP" : ICON_DL + " 下载";
-    if (needVipHint) btn.classList.add("need-vip");
+    btn.innerHTML = ICON_DL + " 下载";
   } else if (pct === "done") {
     btn.innerHTML = ICON_CHECK + " 已完成";
     btn.classList.add("done");
