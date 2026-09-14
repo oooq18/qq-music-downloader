@@ -278,7 +278,7 @@ export default {
         const list = await Promise.all(
           accs.map(async (a) => {
             const p = await probeVip(a);
-            return { name: a.name, qq: maskQq(a.qq), vip: p.vip, error: p.error };
+            return { name: a.name, qq: a.qq, vip: p.vip, error: p.error };
           })
         );
         const current = findAccount(env, url.searchParams.get("current") || "").qq;

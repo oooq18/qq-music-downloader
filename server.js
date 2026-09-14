@@ -270,7 +270,7 @@ app.get("/api/accounts", async (req, res) => {
         if (msg.includes("登录态")) error = "登录失效";
         else vip = false;
       }
-      list.push({ name: a.name, qq: maskQq(a.qq), vip, error });
+      list.push({ name: a.name, qq: a.qq, vip, error });
     }
     const current = findAccount(String(req.query.current || "")).qq;
     res.json({ ok: true, accounts: list, current });

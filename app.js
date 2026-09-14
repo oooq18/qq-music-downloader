@@ -30,6 +30,12 @@ function accountParam() {
   return currentAccount ? "&account=" + encodeURIComponent(currentAccount) : "";
 }
 
+function maskQq(qq) {
+  const s = String(qq || "");
+  if (s.length <= 8) return s;
+  return s.slice(0, 3) + "****" + s.slice(-4);
+}
+
 function renderAccountBar() {
   if (!accountBarEl) return;
   if (!accountList.length) {
@@ -48,7 +54,7 @@ function renderAccountBar() {
         : '<span class="acc-novip">无会员</span>';
     chip.innerHTML =
       '<span class="acc-name">' + escapeHtml(a.name) + "</span>" +
-      '<span class="acc-qq">' + escapeHtml(a.qq) + "</span>" +
+      '<span class="acc-qq">' + escapeHtml(maskQq(a.qq)) + "</span>" +
       badge;
     chip.addEventListener("click", () => {
       currentAccount = a.qq;
