@@ -61,7 +61,7 @@ function renderAccountBar() {
       currentAccountVip = !!a.vip;
       localStorage.setItem(ACCOUNT_KEY, currentAccount);
       renderAccountBar();
-      // 切换账号不再弹提示，账号条本身已标明会员状态
+      refreshListVipTags();
     });
     accountBarEl.appendChild(chip);
   });
@@ -262,6 +262,10 @@ async function handleSearch(page = 1) {
     metaEl.innerHTML = "共找到 <b>" + currentTotal + "</b> 首 · 第 <b>" + page + "</b>/" + totalPages + " 页 · 显示 " + from + "-" + to + " 首";
     currentSongs = [...data.items];
     renderSongs(currentSongs);
+    // 非会员账号：搜索完成后立即批量实测每首歌 128 权限，列表直接显示需VIP标
+    if (!currentAccountVip && currentSongs.length) {
+      probeListVip(currentSongs);
+    }
     // 分页控件
     if (currentTotal > PAGE_SIZE) {
       paginationEl.classList.remove("hidden");
@@ -526,6 +530,8 @@ async function checkQuality(song, q) {
   try { return await p; } finally { qualityCheckInflight.delete(key); }
 }
 function updateListVipByCheck(song, needVip) {
+  // VIP 账号下列表标以搜索字段为准（全部可下），实测只作用于非会员账号
+  if (currentAccountVip) return;
   const card = document.querySelector('.song[data-mid="' + song.songmid + '"]');
   if (!card) return;
   const nameEl = card.querySelector(".song-name");
@@ -543,6 +549,36 @@ function updateListVipByCheck(song, needVip) {
     }
   } else if (tag) {
     tag.remove();
+  }
+}
+// 批量实测列表歌曲的 128 权限（并发 6，避免瞬间请求过多）
+async function probeListVip(songs) {
+  const pool = [];
+  const tasks = songs.slice();
+  function worker() {
+    while (tasks.length) {
+      const song = tasks.shift();
+      checkQuality(song, "128").then((res) => {
+        updateListVipByCheck(song, !res.ok);
+      });
+    }
+  }
+  for (let i = 0; i < 6; i++) pool.push(Promise.resolve().then(worker));
+  await Promise.all(pool);
+}
+// 账号切换后刷新列表 VIP 标
+function refreshListVipTags() {
+  if (!currentSongs.length) return;
+  // 清掉现有全部标
+  document.querySelectorAll(".song .song-name .vip-tag").forEach((t) => t.remove());
+  if (currentAccountVip) {
+    // VIP 账号：按搜索字段显示金色 VIP 标
+    currentSongs.forEach((song) => {
+      if (song.vip) updateListVipByCheck(song, true);
+    });
+  } else {
+    // 非会员账号：重新实测
+    probeListVip(currentSongs);
   }
 }
 function renderDlRow(song, q) {
