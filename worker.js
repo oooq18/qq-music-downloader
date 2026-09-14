@@ -173,7 +173,9 @@ async function search(keyword, page = 1, pageSize = 20) {
     sizeflac: s.sizeflac || 0,
     size320: s.size320 || 0,
     size128: s.size128 || 0,
-    vip: (s.pay && (s.pay.payplay === 1 || s.pay.paydownload === 1)) ? true : false,
+    // vip：只有"播放都需会员"的才标 VIP（这类歌非会员全档位都下不了）
+    // 试听免费但下载要会员的歌（paydownload=1、payplay=0）不算 VIP，128 非会员可下
+    vip: (s.pay && s.pay.payplay === 1) ? true : false,
   }));
   return { items, total };
 }
