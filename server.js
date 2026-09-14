@@ -51,10 +51,12 @@ const VKEY_URL = "https://u6.y.qq.com/cgi-bin/musics.fcg";
 const STREAM_BASE = "https://isure.stream.qqmusic.qq.com/";
 
 
-function makeCookie() {
+function makeCookie(acc) {
   // 优先使用完整登录态（含 euin/uikey 等绿钻身份 cookie）
+  if (acc && acc.cookie) return acc.cookie;
   if (process.env.QQ_COOKIE) return process.env.QQ_COOKIE;
-  return `uin=${QQ}; qqmusic_key=${AUTHST}; qm_keyst=${AUTHST}; tmeLoginType=1; wxuin=${QQ}`;
+  const a = acc || { qq: QQ, authst: AUTHST };
+  return `uin=${a.qq}; qqmusic_key=${a.authst}; qm_keyst=${a.authst}; tmeLoginType=1; wxuin=${a.qq}`;
 }
 
 // AES-256-GCM（16字节密钥 = AES-128-GCM）加密请求体
