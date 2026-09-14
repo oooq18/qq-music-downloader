@@ -19,6 +19,63 @@ const prevPageBtn = document.getElementById("prevPage");
 const nextPageBtn = document.getElementById("nextPage");
 const pageInfoEl = document.getElementById("pageInfo");
 
+// ---- 下载账号（多账号切换）----
+const accountBarEl = document.getElementById("accountBar");
+const ACCOUNT_KEY = "qq_dl_account";
+let currentAccount = localStorage.getItem(ACCOUNT_KEY) || "";
+let accountList = [];
+
+function accountParam() {
+  return currentAccount ? "&account=" + encodeURIComponent(currentAccount) : "";
+}
+
+function renderAccountBar() {
+  if (!accountBarEl) return;
+  if (!accountList.length) {
+    accountBarEl.innerHTML = "";
+    return;
+  }
+  accountBarEl.innerHTML = "";
+  accountList.forEach((a) => {
+    const chip = document.createElement("button");
+    chip.className = "account-chip" + (a.qq === currentAccount ? " active" : "");
+    chip.type = "button";
+    const badge = a.error
+      ? '<span class="acc-err">' + a.error + "</span>"
+      : a.vip
+        ? '<span class="acc-vip">VIP</span>'
+        : '<span class="acc-novip">无会员</span>';
+    chip.innerHTML =
+      "<span>" + escapeHtml(a.name) + "</span>" +
+      '<span class="acc-qq">' + escapeHtml(a.qq) + "</span>" +
+      badge;
+    chip.addEventListener("click", () => {
+      currentAccount = a.qq;
+      localStorage.setItem(ACCOUNT_KEY, currentAccount);
+      renderAccountBar();
+      toast("已切换下载账号：" + a.name + (a.vip ? "（VIP）" : ""));
+    });
+    accountBarEl.appendChild(chip);
+  });
+}
+
+async function loadAccounts() {
+  try {
+    const r = await fetch(API_BASE + "/api/accounts");
+    const d = await r.json();
+    if (d && Array.isArray(d.accounts)) {
+      accountList = d.accounts;
+      if (!accountList.some((a) => a.qq === currentAccount)) {
+        currentAccount = d.current || (accountList[0] && accountList[0].qq) || "";
+        localStorage.setItem(ACCOUNT_KEY, currentAccount);
+      }
+      renderAccountBar();
+    }
+  } catch (_) {
+    // 账号接口不可用时静默降级，不影响搜索下载
+  }
+}
+
 // 音频地址统一走代理（部分 CDN 无 CORS 头，浏览器无法直连）
 function streamUrl(u) {
   if (!u) return u;
@@ -538,7 +595,7 @@ async function startDownload(song, q) {
   const fill = bar.querySelector(".fill");
 
   try {
-    const dlParams = "songmid=" + encodeURIComponent(song.songmid) + "&quality=" + q;
+    const dlParams = "songmid=" + encodeURIComponent(song.songmid) + "&quality=" + q + accountParam();
     const [dlRes, coverBlob, lyricText] = await Promise.all([
       fetch(API_BASE + "/api/music/download?" + dlParams),
       coverOf(song)
@@ -655,6 +712,9 @@ function updateListDlBtn(song, q, pct) {
 
 searchBtn.addEventListener("click", handleSearch);
 keywordEl.addEventListener("keydown", (e) => { if (e.key === "Enter") handleSearch(); });
+
+// 页面启动：加载账号列表（含 VIP 状态）
+loadAccounts();
 
 // ============================================================
 // 播放器（预览 128kbps）+ 滚动歌词
@@ -787,7 +847,7 @@ async function togglePlay(song, btn) {
 
   setPlayBtn(btn, false);
   try {
-    const dlParams = "songmid=" + encodeURIComponent(song.songmid) + "&quality=128";
+    const dlParams = "songmid=" + encodeURIComponent(song.songmid) + "&quality=128" + accountParam();
     const res = await fetch(API_BASE + "/api/music/download?" + dlParams);
     let data = {};
     try { data = await res.json(); } catch (_) {}

@@ -20,6 +20,10 @@ const REFERER = "https://y.qq.com/";
 const SEARCH_URL = "https://c.y.qq.com/soso/fcgi-bin/client_search_cp";
 const VKEY_URL = "https://u6.y.qq.com/cgi-bin/musics.fcg";
 const STREAM_BASE = "https://isure.stream.qqmusic.qq.com/";
+// VIP 探测曲目：周杰伦《晴天》（VIP 独占，非会员请求无损必然失败）
+const PROBE_SONGMID = "0039MnYb0qxYhV";
+const VIP_CACHE_TTL = 5 * 60 * 1000; // 5 分钟缓存
+const vipCache = new Map();
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -40,10 +44,68 @@ function bytesToBase64(bytes) {
   return btoa(bin);
 }
 
-function makeCookie(env) {
+function makeCookie(acc) {
   // 优先使用完整登录态（含 euin/uikey 等绿钻身份 cookie）
-  if (env.QQ_COOKIE) return env.QQ_COOKIE;
-  return `uin=${env.QQ}; qqmusic_key=${env.AUTHST}; qm_keyst=${env.AUTHST}; tmeLoginType=1; wxuin=${env.QQ}`;
+  if (acc.cookie) return acc.cookie;
+  return `uin=${acc.qq}; qqmusic_key=${acc.authst}; qm_keyst=${acc.authst}; tmeLoginType=1; wxuin=${acc.qq}`;
+}
+
+// 解析账号列表（ACCOUNTS = JSON 字符串），并保证默认账号存在
+function parseAccounts(env) {
+  let accs = [];
+  try {
+    const arr = JSON.parse(env.ACCOUNTS || "[]");
+    if (Array.isArray(arr)) accs = arr;
+  } catch (_) {}
+  const clean = accs
+    .filter((a) => a && a.qq && a.authst)
+    .map((a) => ({ name: a.name || "账号", qq: String(a.qq), authst: a.authst, cookie: a.cookie || "" }));
+  if (env.QQ && env.AUTHST && !clean.some((a) => a.qq === String(env.QQ))) {
+    clean.unshift({ name: "主账号", qq: String(env.QQ), authst: env.AUTHST, cookie: env.QQ_COOKIE || "" });
+  }
+  return clean;
+}
+
+function findAccount(env, key) {
+  const accs = parseAccounts(env);
+  if (!accs.length) return null;
+  if (key) {
+    const hit = accs.find((a) => a.qq === key || a.name === key);
+    if (hit) return hit;
+  }
+  return accs[0];
+}
+
+// 探测账号 VIP 状态：请求 VIP 独占歌的无损地址，成功即 VIP
+async function probeVip(acc) {
+  const now = Date.now();
+  const cached = vipCache.get(acc.qq);
+  if (cached && now - cached.at < VIP_CACHE_TTL) return cached;
+  let vip = false;
+  let error = "";
+  try {
+    await getDownloadUrl(PROBE_SONGMID, "flac", acc);
+    vip = true;
+  } catch (err) {
+    error = err.message || "检测失败";
+    // "登录态已失效" 单独标记，其余视为非 VIP
+    if (error.includes("登录态已失效") || error.includes("登录态")) {
+      vip = false;
+      error = "登录失效";
+    } else {
+      vip = false;
+      error = "";
+    }
+  }
+  const result = { vip, error, at: now };
+  vipCache.set(acc.qq, result);
+  return result;
+}
+
+function maskQq(qq) {
+  const s = String(qq);
+  if (s.length <= 6) return s;
+  return s.slice(0, 3) + "****" + s.slice(-4);
 }
 
 // AES-128-GCM 加密请求体（输出 = 12字节nonce + 密文 + tag，整体 base64）
@@ -147,11 +209,11 @@ async function getLyric(songmid) {
 }
 
 // 获取下载地址（ag-1 协议）
-async function getDownloadUrl(songmid, quality, env) {
-  if (!env.QQ || !env.AUTHST) throw new Error("服务端未配置 QQ/AUTHST 登录态");
+async function getDownloadUrl(songmid, quality, acc) {
+  if (!acc || !acc.qq || !acc.authst) throw new Error("服务端未配置 QQ/AUTHST 登录态");
   const filename = getFileName(songmid, quality);
   const plainBody = JSON.stringify({
-    comm: { ct: 19, cv: 13020508, v: 13020508, format: "json", qq: env.QQ, authst: env.AUTHST, tmeLoginType: 1 },
+    comm: { ct: 19, cv: 13020508, v: 13020508, format: "json", qq: acc.qq, authst: acc.authst, tmeLoginType: 1 },
     "music.vkey.GetVkey.UrlGetVkey": {
       module: "music.vkey.GetVkey",
       method: "UrlGetVkey",
@@ -169,7 +231,7 @@ async function getDownloadUrl(songmid, quality, env) {
       Referer: REFERER,
       Origin: "https://y.qq.com",
       Accept: "application/octet-stream",
-      Cookie: makeCookie(env),
+      Cookie: makeCookie(acc),
       "User-Agent": UA,
     },
     body,
@@ -206,7 +268,20 @@ export default {
     const url = new URL(request.url);
     try {
       if (url.pathname === "/api/health") {
-        return json({ ok: true, authed: Boolean(env.QQ && env.AUTHST) });
+        const accs = parseAccounts(env);
+        return json({ ok: true, authed: accs.length > 0, accounts: accs.length });
+      }
+      if (url.pathname === "/api/accounts") {
+        const accs = parseAccounts(env);
+        if (!accs.length) return json({ ok: false, message: "服务端未配置账号" }, 500);
+        const list = await Promise.all(
+          accs.map(async (a) => {
+            const p = await probeVip(a);
+            return { name: a.name, qq: maskQq(a.qq), vip: p.vip, error: p.error };
+          })
+        );
+        const current = findAccount(env, url.searchParams.get("current") || "").qq;
+        return json({ ok: true, accounts: list, current });
       }
       if (url.pathname === "/api/stream") {
         // 音频代理：绕过 CDN 的 CORS 限制（部分 CDN 无跨域头，浏览器无法直接拉流）
@@ -235,8 +310,10 @@ export default {
           ? url.searchParams.get("quality")
           : "320";
         if (!songmid) return json({ message: "songmid 不能为空" }, 400);
-        const streamUrl = await getDownloadUrl(songmid, quality, env);
-        return json({ url: streamUrl, source: "qq" });
+        const acc = findAccount(env, url.searchParams.get("account") || "");
+        if (!acc) return json({ message: "服务端未配置账号" }, 500);
+        const streamUrl = await getDownloadUrl(songmid, quality, acc);
+        return json({ url: streamUrl, source: "qq", account: acc.qq });
       }
       if (url.pathname === "/api/cover") {
         const albummid = url.searchParams.get("albummid") || "";

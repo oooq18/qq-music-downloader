@@ -16,6 +16,31 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const QQ = process.env.QQ || "";
 const AUTHST = process.env.AUTHST || "";
 
+// 多账号（ACCOUNTS = JSON 字符串），与 worker.js 保持同构
+function parseAccounts() {
+  let accs = [];
+  try {
+    const arr = JSON.parse(process.env.ACCOUNTS || "[]");
+    if (Array.isArray(arr)) accs = arr;
+  } catch (_) {}
+  const clean = accs
+    .filter((a) => a && a.qq && a.authst)
+    .map((a) => ({ name: a.name || "账号", qq: String(a.qq), authst: a.authst, cookie: a.cookie || "" }));
+  if (QQ && AUTHST && !clean.some((a) => a.qq === QQ)) {
+    clean.unshift({ name: "主账号", qq: QQ, authst: AUTHST, cookie: process.env.QQ_COOKIE || "" });
+  }
+  return clean;
+}
+function findAccount(key) {
+  const accs = parseAccounts();
+  if (!accs.length) return null;
+  if (key) {
+    const hit = accs.find((a) => a.qq === key || a.name === key);
+    if (hit) return hit;
+  }
+  return accs[0];
+}
+
 const AES_KEY_HEX = "bd305f10d0ff74b6ef54dab835b5e1cf";
 const RESPONSE_XOR_KEY_HEX = "7a3f8c1d5e9b2f0a6c4d7e8b1f3a5c9d0e2b6f4a81";
 const SIGN_XOR_BYTES = [89,39,179,150,218,82,58,252,177,52,186,123,120,64,242,133,143,161,121,179];
@@ -100,10 +125,10 @@ async function search(keyword, page = 1, pageSize = 20) {
 }
 
 // 获取下载地址（ag-1 协议）
-async function getDownloadUrl(songmid, quality) {
+async function getDownloadUrl(songmid, quality, acc) {
   const filename = getFileName(songmid, quality);
   const plainBody = JSON.stringify({
-    comm: { ct: 19, cv: 13020508, v: 13020508, format: "json", qq: QQ, authst: AUTHST, tmeLoginType: 1 },
+    comm: { ct: 19, cv: 13020508, v: 13020508, format: "json", qq: acc.qq, authst: acc.authst, tmeLoginType: 1 },
     "music.vkey.GetVkey.UrlGetVkey": {
       module: "music.vkey.GetVkey",
       method: "UrlGetVkey",
@@ -121,7 +146,7 @@ async function getDownloadUrl(songmid, quality) {
       Referer: REFERER,
       Origin: "https://y.qq.com",
       Accept: "application/octet-stream",
-      Cookie: makeCookie(),
+      Cookie: makeCookie(acc),
       "User-Agent": UA,
     },
     body,
@@ -163,8 +188,10 @@ app.get("/api/music/download", async (req, res) => {
     const id = String(req.query.songmid || req.query.hash || "");
     const q = ["flac", "320", "128"].includes(req.query.quality) ? req.query.quality : "320";
     if (!id) return res.status(400).json({ message: "songmid 不能为空" });
-    const downloadUrl = await getDownloadUrl(id, q);
-    res.json({ url: downloadUrl, source: "qq" });
+    const acc = findAccount(String(req.query.account || ""));
+    if (!acc) return res.status(500).json({ message: "服务端未配置账号" });
+    const downloadUrl = await getDownloadUrl(id, q, acc);
+    res.json({ url: downloadUrl, source: "qq", account: acc.qq });
   } catch (err) {
     res.status(500).json({ message: err.message || "下载失败" });
   }
@@ -213,7 +240,41 @@ app.get("/api/lyric", async (req, res) => {
 });
 
 // 健康检查
-app.get("/api/health", (req, res) => res.json({ ok: true, authed: Boolean(QQ && AUTHST) }));
+app.get("/api/health", (req, res) => {
+  const accs = parseAccounts();
+  res.json({ ok: true, authed: accs.length > 0, accounts: accs.length });
+});
+
+// 账号列表 + VIP 探测
+app.get("/api/accounts", async (req, res) => {
+  try {
+    const accs = parseAccounts();
+    if (!accs.length) return res.status(500).json({ ok: false, message: "服务端未配置账号" });
+    const probeSongmid = "0039MnYb0qxYhV"; // 周杰伦《晴天》VIP 独占探测
+    const maskQq = (q) => {
+      const s = String(q);
+      return s.length <= 6 ? s : s.slice(0, 3) + "****" + s.slice(-4);
+    };
+    const list = [];
+    for (const a of accs) {
+      let vip = false;
+      let error = "";
+      try {
+        await getDownloadUrl(probeSongmid, "flac", a);
+        vip = true;
+      } catch (err) {
+        const msg = err.message || "";
+        if (msg.includes("登录态")) error = "登录失效";
+        else vip = false;
+      }
+      list.push({ name: a.name, qq: maskQq(a.qq), vip, error });
+    }
+    const current = findAccount(String(req.query.current || "")).qq;
+    res.json({ ok: true, accounts: list, current });
+  } catch (err) {
+    res.status(500).json({ message: err.message || "账号查询失败" });
+  }
+});
 // 音频代理：绕过 CDN 的 CORS 限制
 app.get("/api/stream", async (req, res) => {
   try {
