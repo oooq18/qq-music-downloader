@@ -1,25 +1,17 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#FBF7F0"/>
-      <stop offset="1" stop-color="#EFE4D2"/>
-    </linearGradient>
-    <radialGradient id="vinyl" cx="0.4" cy="0.35" r="0.9">
-      <stop offset="0" stop-color="#2A2B2E"/>
-      <stop offset="0.55" stop-color="#191A1C"/>
-      <stop offset="1" stop-color="#0D0E10"/>
-    </radialGradient>
-    <linearGradient id="label" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#E3C082"/>
-      <stop offset="0.5" stop-color="#C9A15C"/>
-      <stop offset="1" stop-color="#A9833F"/>
+      <stop offset="0" stop-color="#FA6B57"/>
+      <stop offset="0.45" stop-color="#F0324B"/>
+      <stop offset="1" stop-color="#A032C8"/>
     </linearGradient>
   </defs>
 
-  <!-- 圆角方形背景 -->
+  <!-- 红粉紫渐变圆角方形背景 -->
   <rect x="0" y="0" width="1024" height="1024" rx="230" fill="url(#bg)"/>
 
-  <!-- 黑胶唱片（复刻网页 logo 造型） -->
-  <circle cx="512" cy="512" r="350" fill="url(#vinyl)"/>
-  <circle cx="512" cy="512" r="64" fill="url(#label)"/>
+  <!-- 白色黑胶唱片（环形，复刻网页 logo） -->
+  <path fill="#FFFFFF" fill-rule="evenodd"
+        d="M512 162 a350 350 0 1 0 0 700 a350 350 0 0 0 0 -700 Z
+           m0 250 a100 100 0 1 1 0 200 a100 100 0 0 1 0 -200 Z"/>
 </svg>
