@@ -416,7 +416,7 @@ body {
 .dl-open:active { transform: scale(0.95); }
 .dl-open.busy { background: rgba(0, 0, 0, 0.08); }
 .dl-open.done { background: rgba(48, 178, 84, 0.14); color: #1f8a45; }
-.dl-open.error { background: rgba(240, 50, 75, 0.12); color: #d51f3d; }
+.dl-open.error { background: rgba(201, 161, 92, 0.12); color: #a8853f; }
 
 /* 列表内进度条 */
 .progress-bar {
@@ -438,7 +438,7 @@ body {
   position: absolute;
   left: 14px; right: 14px; bottom: 10px;
   font-size: 11px;
-  color: #d51f3d;
+  color: #a8853f;
 }
 
 /* ---- 页脚 ---- */
@@ -1039,8 +1039,8 @@ body {
 .dl-row.done { border-color: rgba(48, 178, 84, 0.4); }
 .dl-row.done .dl-status { color: #1f8a45; }
 .dl-row.done .dl-q { color: #1f8a45; }
-.dl-row.error { border-color: rgba(240, 50, 75, 0.4); }
-.dl-row.error .dl-status { color: #d51f3d; }
+.dl-row.error { border-color: rgba(201, 161, 92, 0.4); }
+.dl-row.error .dl-status { color: #a8853f; }
 .dl-row.need-vip { opacity: 0.55; }
 .dl-row.need-vip .dl-status {
   color: #c9a15c;
