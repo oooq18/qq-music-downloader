@@ -1193,3 +1193,14 @@ body {
   color: var(--ink-3);
   opacity: 0.75;
 }
+
+/* 音质实测中 */
+.dl-row.checking {
+  cursor: default;
+}
+.dl-row.checking .dl-status {
+  color: var(--ink-3);
+}
+.dl-row.checking::after {
+  opacity: 0;
+}

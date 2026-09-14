@@ -492,8 +492,60 @@ function renderDlRows() {
     row.addEventListener("click", fn);
     dlRows.appendChild(row);
   });
+  // 非会员账号：并行实测每个音质权限，结果驱动行状态
+  if (!currentAccountVip && panelSong) {
+    const song = panelSong;
+    QQ_QUAL_ORDER.forEach((q) => {
+      checkQuality(song, q).then((res) => {
+        if (panelSong && panelSong.songmid === song.songmid) refreshDlRow(song, q);
+        updateListVipByCheck(song, !res.ok);
+      });
+    });
+  }
 }
 
+// ---- 音质实测：用当前账号真实探测每个音质能否取到地址 ----
+// 绕过搜索接口 pay 字段在海外 IP 下不可靠的问题，显示以实测为准
+const qualityCheckCache = new Map();
+const qualityCheckInflight = new Map();
+async function checkQuality(song, q) {
+  const key = song.songmid + "-" + q + "-" + currentAccount;
+  if (qualityCheckCache.has(key)) return qualityCheckCache.get(key);
+  if (qualityCheckInflight.has(key)) return qualityCheckInflight.get(key);
+  const p = (async () => {
+    const r = await fetch(
+      API_BASE + "/api/music/download?songmid=" + encodeURIComponent(song.songmid) + "&quality=" + q + accountParam()
+    );
+    let data = {};
+    try { data = await r.json(); } catch (_) {}
+    const ok = !!data.url;
+    const res = { ok, error: ok ? "" : (data.message || "该音质不可用") };
+    qualityCheckCache.set(key, res);
+    return res;
+  })().catch((e) => ({ ok: false, error: "检测失败：" + e.message }));
+  qualityCheckInflight.set(key, p);
+  try { return await p; } finally { qualityCheckInflight.delete(key); }
+}
+function updateListVipByCheck(song, needVip) {
+  const card = document.querySelector('.song[data-mid="' + song.songmid + '"]');
+  if (!card) return;
+  const nameEl = card.querySelector(".song-name");
+  if (!nameEl) return;
+  let tag = nameEl.querySelector(".vip-tag");
+  if (needVip) {
+    if (!tag) {
+      tag = document.createElement("span");
+      tag.className = "vip-tag" + (currentAccountVip ? "" : " need");
+      tag.textContent = currentAccountVip ? "VIP" : "需VIP";
+      nameEl.appendChild(tag);
+    } else {
+      tag.className = "vip-tag" + (currentAccountVip ? "" : " need");
+      tag.textContent = currentAccountVip ? "VIP" : "需VIP";
+    }
+  } else if (tag) {
+    tag.remove();
+  }
+}
 function renderDlRow(song, q) {
   const size = song[QUALITY_SIZE_KEYS[q]];
   const key = song.songmid + "-" + q;
@@ -501,11 +553,7 @@ function renderDlRow(song, q) {
   row.className = "dl-row";
   row.dataset.key = key;
 
-  const needVip = currentAccountVip
-    ? false
-    : song.vip
-      ? true // VIP 歌在无会员账号下所有档位都需 VIP
-      : q === "flac" || q === "320"; // 免费歌高音质需 VIP，128 可下
+  const checked = qualityCheckCache.get(song.songmid + "-" + q + "-" + currentAccount);
 
   const state = downloadStates.get(key);
   if (state && state.status === "downloading") {
@@ -531,15 +579,26 @@ function renderDlRow(song, q) {
       '<span class="dl-size">' + (size ? formatSize(size) : "") + "</span>" +
       '<span class="dl-status">' + ICON_RETRY + " 重试</span>";
     row.addEventListener("click", () => startDownload(song, q));
-  } else if (needVip) {
+  } else if (checked && !checked.ok) {
+    // 实测取不到地址 → 该音质在当前账号下不可访问，统一显示需VIP
     row.classList.add("need-vip");
     row.disabled = true;
-    row.title = "该音质需 VIP 会员";
+    row.title = checked.error || "该音质需 VIP 会员";
     row.innerHTML =
       '<span class="dl-q">' + QUALITY_DESC[q].label + "</span>" +
       '<span class="dl-tag">' + QUALITY_DESC[q].tag + "</span>" +
       '<span class="dl-size">' + (size ? formatSize(size) : "") + "</span>" +
       '<span class="dl-status">需VIP</span>';
+  } else if (!checked && !currentAccountVip) {
+    // 非会员账号：音质实测进行中（行先禁用，结果出来后刷新）
+    row.classList.add("checking");
+    row.disabled = true;
+    row.title = "正在用当前账号检测该音质权限";
+    row.innerHTML =
+      '<span class="dl-q">' + QUALITY_DESC[q].label + "</span>" +
+      '<span class="dl-tag">' + QUALITY_DESC[q].tag + "</span>" +
+      '<span class="dl-size">' + (size ? formatSize(size) : "") + "</span>" +
+      '<span class="dl-status">检测中</span>';
   } else if (!size) {
     row.classList.add("unavailable");
     row.disabled = true;
