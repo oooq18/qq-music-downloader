@@ -25,7 +25,6 @@
 
   <!-- 黑胶圆盘 -->
   <circle cx="512" cy="486" r="352" fill="url(#vinyl)"/>
-  <!-- 盘面纹路 -->
   <g stroke="#FFFFFF" stroke-opacity="0.045" fill="none">
     <circle cx="512" cy="486" r="315" stroke-width="3"/>
     <circle cx="512" cy="486" r="272" stroke-width="2.5"/>
@@ -33,7 +32,6 @@
     <circle cx="512" cy="486" r="204" stroke-width="2"/>
     <circle cx="512" cy="486" r="176" stroke-width="2"/>
   </g>
-  <!-- 顶部高光 -->
   <ellipse cx="452" cy="330" rx="235" ry="118" fill="url(#hi)" opacity="0.5" transform="rotate(-24 452 330)"/>
 
   <!-- 中心金色彩签 -->
@@ -41,17 +39,22 @@
   <circle cx="512" cy="486" r="124" fill="none" stroke="#FFFFFF" stroke-opacity="0.28" stroke-width="3"/>
   <circle cx="512" cy="486" r="8" fill="#8A6A33"/>
 
-  <!-- 金色音符（八分音符） -->
+  <!-- 标准双八分音符 -->
   <g fill="#FFFFFF">
-    <ellipse cx="540" cy="512" rx="34" ry="25" transform="rotate(-18 540 512)"/>
-    <rect x="566" y="416" width="13" height="104" rx="6.5"/>
-    <path d="M579 424 C 608 410 628 398 646 380 C 636 402 630 426 632 452 L 614 462 C 606 446 594 434 579 430 Z" transform="translate(0,-14)"/>
+    <!-- 符头 -->
+    <ellipse cx="487" cy="510" rx="31" ry="22" transform="rotate(-18 487 510)"/>
+    <ellipse cx="577" cy="480" rx="31" ry="22" transform="rotate(-18 577 480)"/>
+    <!-- 符杆 -->
+    <rect x="514" y="402" width="13" height="106" rx="6.5"/>
+    <rect x="604" y="372" width="13" height="106" rx="6.5"/>
+    <!-- 横梁 -->
+    <path d="M 511 418 L 615 388 L 626 404 L 522 434 Z"/>
   </g>
 
-  <!-- 下载箭头（右下） -->
-  <g stroke="#FFFFFF" stroke-width="26" stroke-linecap="round" stroke-linejoin="round" fill="none">
-    <line x1="668" y1="574" x2="668" y2="676"/>
-    <polyline points="618,626 668,676 718,626"/>
-    <line x1="596" y1="718" x2="740" y2="718"/>
+  <!-- 下载箭头（右下，细而精致） -->
+  <g stroke="#FFFFFF" stroke-width="22" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <line x1="702" y1="596" x2="702" y2="686"/>
+    <polyline points="658,634 702,678 746,634"/>
+    <line x1="634" y1="716" x2="770" y2="716"/>
   </g>
 </svg>
