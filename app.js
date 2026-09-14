@@ -333,22 +333,6 @@ function renderSongs(songs) {
     dlBtn.addEventListener("click", () => openDlPanel(song));
     actions.appendChild(dlBtn);
 
-    const coverBtn = document.createElement("button");
-    coverBtn.className = "dl-open asset-btn";
-    coverBtn.innerHTML = ICON_COVER;
-    coverBtn.title = "下载封面";
-    coverBtn.setAttribute("aria-label", "下载封面");
-    coverBtn.addEventListener("click", (e) => { e.stopPropagation(); downloadCover(song); });
-    actions.appendChild(coverBtn);
-
-    const lrcBtn = document.createElement("button");
-    lrcBtn.className = "dl-open asset-btn";
-    lrcBtn.innerHTML = ICON_LRC;
-    lrcBtn.title = "下载歌词";
-    lrcBtn.setAttribute("aria-label", "下载歌词");
-    lrcBtn.addEventListener("click", (e) => { e.stopPropagation(); downloadLyric(song); });
-    actions.appendChild(lrcBtn);
-
     card.appendChild(actions);
     listEl.appendChild(card);
   });
@@ -404,6 +388,20 @@ function renderDlRows() {
   QQ_QUAL_ORDER.forEach((q, i) => {
     const row = renderDlRow(panelSong, q);
     row.style.animationDelay = (0.06 + i * 0.07).toFixed(2) + "s";
+    dlRows.appendChild(row);
+  });
+  // 附加下载：封面 / 歌词（与音质行同风格）
+  const n = QQ_QUAL_ORDER.length;
+  [["cover", ICON_COVER + " 下载封面", () => downloadCover(panelSong)],
+   ["lrc", ICON_LRC + " 下载歌词", () => downloadLyric(panelSong)]].forEach(([kind, label, fn], i) => {
+    const row = document.createElement("button");
+    row.className = "dl-row asset-row";
+    row.style.animationDelay = (0.06 + (n + i) * 0.07).toFixed(2) + "s";
+    row.innerHTML =
+      '<span class="dl-q">' + label + "</span>" +
+      '<span class="dl-size"></span>' +
+      '<span class="dl-status">下载</span>';
+    row.addEventListener("click", fn);
     dlRows.appendChild(row);
   });
 }
