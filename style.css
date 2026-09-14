@@ -185,9 +185,14 @@ body {
 }
 .account-chip:hover { background: rgba(0, 0, 0, 0.045); }
 .account-chip:active { transform: scale(0.97); }
-.account-chip.active {
+.account-chip.active-vip {
   border-color: rgba(201, 161, 92, 0.55);
   background: rgba(201, 161, 92, 0.09);
+  color: var(--ink);
+}
+.account-chip.active-novip {
+  border-color: var(--line);
+  background: rgba(0, 0, 0, 0.045);
   color: var(--ink);
 }
 .account-chip .acc-name { font-weight: 600; }

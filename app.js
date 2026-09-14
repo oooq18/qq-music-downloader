@@ -45,7 +45,7 @@ function renderAccountBar() {
   accountBarEl.innerHTML = "";
   accountList.forEach((a) => {
     const chip = document.createElement("button");
-    chip.className = "account-chip" + (a.qq === currentAccount ? " active" : "");
+    chip.className = "account-chip" + (a.qq === currentAccount ? " active" + (a.vip ? " active-vip" : " active-novip") : "");
     chip.type = "button";
     const badge = a.error
       ? '<span class="acc-err">' + a.error + "</span>"
@@ -61,7 +61,7 @@ function renderAccountBar() {
       currentAccountVip = !!a.vip;
       localStorage.setItem(ACCOUNT_KEY, currentAccount);
       renderAccountBar();
-      toast(a.name + (a.vip ? " · VIP 已启用" : " · 免费音质"), a.vip ? "gold" : "gray");
+      // 切换账号不再弹提示，账号条本身已标明会员状态
     });
     accountBarEl.appendChild(chip);
   });
