@@ -1021,8 +1021,8 @@ body {
   transform: translateY(-1px);
 }
 .song-name .vip-tag.need {
-  color: #8e8e93;
-  border-color: rgba(142, 142, 147, 0.45);
+  color: #c9a15c;
+  border-color: rgba(201, 161, 92, 0.45);
 }
 .dl-row .dl-tag {
   font-size: 10px;
