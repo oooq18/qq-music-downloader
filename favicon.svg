@@ -14,28 +14,12 @@
       <stop offset="0.5" stop-color="#C9A15C"/>
       <stop offset="1" stop-color="#A9833F"/>
     </linearGradient>
-    <linearGradient id="hi" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.55"/>
-      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
-    </linearGradient>
   </defs>
 
   <!-- 圆角方形背景 -->
   <rect x="0" y="0" width="1024" height="1024" rx="230" fill="url(#bg)"/>
 
-  <!-- 黑胶圆盘 -->
-  <circle cx="512" cy="486" r="352" fill="url(#vinyl)"/>
-  <g stroke="#FFFFFF" stroke-opacity="0.045" fill="none">
-    <circle cx="512" cy="486" r="315" stroke-width="3"/>
-    <circle cx="512" cy="486" r="272" stroke-width="2.5"/>
-    <circle cx="512" cy="486" r="236" stroke-width="2.5"/>
-    <circle cx="512" cy="486" r="204" stroke-width="2"/>
-    <circle cx="512" cy="486" r="176" stroke-width="2"/>
-  </g>
-  <ellipse cx="452" cy="330" rx="235" ry="118" fill="url(#hi)" opacity="0.5" transform="rotate(-24 452 330)"/>
-
-  <!-- 中心金色彩签 -->
-  <circle cx="512" cy="486" r="132" fill="url(#label)"/>
-  <circle cx="512" cy="486" r="124" fill="none" stroke="#FFFFFF" stroke-opacity="0.28" stroke-width="3"/>
-  <circle cx="512" cy="486" r="8" fill="#8A6A33"/>
+  <!-- 黑胶唱片（复刻网页 logo 造型） -->
+  <circle cx="512" cy="512" r="350" fill="url(#vinyl)"/>
+  <circle cx="512" cy="512" r="64" fill="url(#label)"/>
 </svg>
