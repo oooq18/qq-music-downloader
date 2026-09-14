@@ -390,7 +390,7 @@ function renderSongs(songs) {
           : "") + "</div>" +
       '<div class="song-meta">' +
         '<span class="singer">' + escapeHtml(song.singer || "未知歌手") + "</span>" +
-        '<span class="sep">·</span>' +
+        '<span class="sep">\\</span>' +
         '<span class="album">' + escapeHtml(song.albumname || "未知专辑") + "</span>" +
       "</div>";
     card.appendChild(body);
