@@ -1186,3 +1186,10 @@ body {
   border: 1px solid var(--line);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
 }
+
+/* 页面版本角标 */
+.ver-tag {
+  font-size: 10px;
+  color: var(--ink-3);
+  opacity: 0.75;
+}
