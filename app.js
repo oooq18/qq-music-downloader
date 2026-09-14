@@ -53,7 +53,7 @@ function renderAccountBar() {
       currentAccount = a.qq;
       localStorage.setItem(ACCOUNT_KEY, currentAccount);
       renderAccountBar();
-      toast(a.name + (a.vip ? " · VIP 已启用" : " · 免费音质"), "gold");
+      toast(a.name + (a.vip ? " · VIP 已启用" : " · 免费音质"), a.vip ? "gold" : "gray");
     });
     accountBarEl.appendChild(chip);
   });

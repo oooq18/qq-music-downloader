@@ -173,6 +173,7 @@ async function search(keyword, page = 1, pageSize = 20) {
     sizeflac: s.sizeflac || 0,
     size320: s.size320 || 0,
     size128: s.size128 || 0,
+    vip: (s.pay && (s.pay.payplay === 1 || s.pay.paydownload === 1)) ? true : false,
   }));
   return { items, total };
 }
