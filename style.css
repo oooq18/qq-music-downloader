@@ -277,6 +277,10 @@ body {
   gap: 12px;
   min-height: 46px;
 }
+.status:empty {
+  padding: 0;
+  min-height: 0;
+}
 .status .spinner {
   width: 16px; height: 16px;
   border-radius: 50%;
