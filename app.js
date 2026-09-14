@@ -719,9 +719,10 @@ function updateListDlBtn(song, q, pct) {
   if (!card) return;
   const btn = card.querySelector(".dl-open");
   if (!btn) return;
+  // 先清空所有状态类，避免错误/完成态残留
+  btn.classList.remove("busy", "done", "error");
   if (pct === null) {
     btn.innerHTML = ICON_DL + " 下载";
-    btn.classList.remove("busy");
   } else if (pct === "done") {
     btn.innerHTML = ICON_CHECK + " 已完成";
     btn.classList.add("done");
