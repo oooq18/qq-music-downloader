@@ -30,6 +30,22 @@ function accountParam() {
   return currentAccount ? "&account=" + encodeURIComponent(currentAccount) : "";
 }
 
+// 切换账号后刷新列表里的下载按钮提示（VIP 歌在无会员账号下显示"需VIP"）
+function refreshListVipHints() {
+  document.querySelectorAll(".song").forEach((card) => {
+    const mid = card.dataset.mid;
+    const song = currentSongs.find((s) => s.songmid === mid);
+    if (!song) return;
+    const btn = card.querySelector(".dl-open");
+    if (!btn) return;
+    if (btn.classList.contains("busy") || btn.classList.contains("done")) return;
+    const need = song.vip && !currentAccountVip;
+    btn.classList.toggle("need-vip", need);
+    btn.innerHTML = need ? "需VIP" : ICON_DL + " 下载";
+    btn.title = need ? "该歌曲仅会员可下载高音质，点击可试听/下载试听音质" : "选择音质并下载";
+  });
+}
+
 function maskQq(qq) {
   const s = String(qq || "");
   if (s.length <= 8) return s;
@@ -61,6 +77,7 @@ function renderAccountBar() {
       currentAccountVip = !!a.vip;
       localStorage.setItem(ACCOUNT_KEY, currentAccount);
       renderAccountBar();
+      refreshListVipHints();
       toast(a.name + (a.vip ? " · VIP 已启用" : " · 免费音质"), a.vip ? "gold" : "gray");
     });
     accountBarEl.appendChild(chip);
@@ -408,8 +425,10 @@ function renderSongs(songs) {
 
     const dlBtn = document.createElement("button");
     dlBtn.className = "dl-open";
-    dlBtn.innerHTML = ICON_DL + " 下载";
-    dlBtn.title = "选择音质并下载";
+    const needVipHint = song.vip && !currentAccountVip;
+    dlBtn.innerHTML = needVipHint ? "需VIP" : ICON_DL + " 下载";
+    if (needVipHint) dlBtn.classList.add("need-vip");
+    dlBtn.title = needVipHint ? "该歌曲仅会员可下载高音质，点击可试听/下载试听音质" : "选择音质并下载";
     dlBtn.addEventListener("click", () => openDlPanel(song));
     actions.appendChild(dlBtn);
 
@@ -731,9 +750,11 @@ function updateListDlBtn(song, q, pct) {
   const btn = card.querySelector(".dl-open");
   if (!btn) return;
   // 先清空所有状态类，避免错误/完成态残留
-  btn.classList.remove("busy", "done", "error");
+  btn.classList.remove("busy", "done", "error", "need-vip");
   if (pct === null) {
-    btn.innerHTML = ICON_DL + " 下载";
+    const needVipHint = song.vip && !currentAccountVip;
+    btn.innerHTML = needVipHint ? "需VIP" : ICON_DL + " 下载";
+    if (needVipHint) btn.classList.add("need-vip");
   } else if (pct === "done") {
     btn.innerHTML = ICON_CHECK + " 已完成";
     btn.classList.add("done");
