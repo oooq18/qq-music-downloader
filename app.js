@@ -23,6 +23,7 @@ const pageInfoEl = document.getElementById("pageInfo");
 const accountBarEl = document.getElementById("accountBar");
 const ACCOUNT_KEY = "qq_dl_account";
 let currentAccount = localStorage.getItem(ACCOUNT_KEY) || "";
+let currentAccountVip = false;
 let accountList = [];
 
 function accountParam() {
@@ -51,6 +52,7 @@ function renderAccountBar() {
       badge;
     chip.addEventListener("click", () => {
       currentAccount = a.qq;
+      currentAccountVip = !!a.vip;
       localStorage.setItem(ACCOUNT_KEY, currentAccount);
       renderAccountBar();
       toast(a.name + (a.vip ? " · VIP 已启用" : " · 免费音质"), a.vip ? "gold" : "gray");
@@ -69,6 +71,8 @@ async function loadAccounts() {
         currentAccount = d.current || (accountList[0] && accountList[0].qq) || "";
         localStorage.setItem(ACCOUNT_KEY, currentAccount);
       }
+      const cur = accountList.find((a) => a.qq === currentAccount);
+      currentAccountVip = !!(cur && cur.vip);
       renderAccountBar();
     }
   } catch (_) {
@@ -450,6 +454,14 @@ function closeDlPanel() {
 function renderDlRows() {
   if (!panelSong) return;
   dlRows.innerHTML = "";
+  // 当前账号状态提示条
+  const acc = accountList.find((a) => a.qq === currentAccount);
+  dlAcc.className = "dl-acc" + (acc && acc.vip ? " vip" : "");
+  dlAcc.textContent = acc
+    ? acc.vip
+      ? "当前账号 " + acc.name + " · VIP 已启用"
+      : "当前账号 " + acc.name + " · 免费版，VIP 歌曲仅开放试听音质"
+    : "未选择下载账号";
   QQ_QUAL_ORDER.forEach((q, i) => {
     const row = renderDlRow(panelSong, q);
     row.style.animationDelay = (0.06 + i * 0.07).toFixed(2) + "s";
@@ -478,6 +490,8 @@ function renderDlRow(song, q) {
   row.className = "dl-row";
   row.dataset.key = key;
 
+  const needVip = song.vip && !currentAccountVip && (q === "flac" || q === "320");
+
   const state = downloadStates.get(key);
   if (state && state.status === "downloading") {
     row.classList.add("downloading");
@@ -502,6 +516,15 @@ function renderDlRow(song, q) {
       '<span class="dl-size">' + (size ? formatSize(size) : "") + "</span>" +
       '<span class="dl-status">' + ICON_RETRY + " 重试</span>";
     row.addEventListener("click", () => startDownload(song, q));
+  } else if (needVip) {
+    row.classList.add("need-vip");
+    row.disabled = true;
+    row.title = "该音质需 VIP 会员";
+    row.innerHTML =
+      '<span class="dl-q">' + QUALITY_DESC[q].label + "</span>" +
+      '<span class="dl-tag">' + QUALITY_DESC[q].tag + "</span>" +
+      '<span class="dl-size">' + (size ? formatSize(size) : "") + "</span>" +
+      '<span class="dl-status">需VIP</span>';
   } else if (!size) {
     row.classList.add("unavailable");
     row.disabled = true;
@@ -916,6 +939,7 @@ async function togglePlay(song, btn) {
     await audio.play();
     setPlayBtn(btn, true);
     setPlayerIcons(true);
+    statusEl.innerHTML = "";
     loadLyrics(song); // 异步加载歌词，不阻塞播放
   } catch (err) {
     btn.innerHTML = ICON_PLAY;
