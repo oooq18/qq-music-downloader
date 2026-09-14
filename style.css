@@ -160,7 +160,7 @@ body {
 .account-bar {
   margin-top: 14px;
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: 6px;
   background: var(--glass);
   -webkit-backdrop-filter: blur(20px) saturate(160%);
@@ -174,8 +174,7 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  flex: 1 1 0;
-  min-width: 130px;
+  width: 100%;
   gap: 8px;
   border: 1px solid transparent;
   background: transparent;
