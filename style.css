@@ -1144,6 +1144,18 @@ body {
 .page-info b { color: var(--ink); font-weight: 700; }
 
 
+/* ---- 封面/歌词独立下载（下载面板内） ---- */
+.asset-row {
+  border-top: 1px dashed rgba(0, 0, 0, 0.12) !important;
+  margin-top: 2px;
+}
+.asset-row .dl-q {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.asset-row .dl-q svg { width: 14px; height: 14px; }
+
 /* ---- 轻提示 ---- */
 .toast {
   position: fixed;

@@ -485,9 +485,9 @@ function renderDlRows() {
     row.style.animationDelay = (0.06 + (n + i) * 0.07).toFixed(2) + "s";
     // 与音质行完全相同的行结构（dl-q + dl-tag + dl-size + dl-status）
     row.innerHTML =
-      '<span class="dl-q">' + label + '<span class="dl-tag">' + (kind === "cover" ? "图片" : "文本") + "</span></span>" +
+      '<span class="dl-q">' + label + "</span>" +
       '<span class="dl-size"></span>' +
-      '<span class="dl-status">' + ICON_DL + " 下载</span>";
+      '<span class="dl-status">下载</span>';
     row.addEventListener("click", fn);
     dlRows.appendChild(row);
   });
