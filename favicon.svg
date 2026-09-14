@@ -1,17 +1,40 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#FA6B57"/>
-      <stop offset="0.45" stop-color="#F0324B"/>
-      <stop offset="1" stop-color="#A032C8"/>
+      <stop offset="0" stop-color="#26272B"/>
+      <stop offset="1" stop-color="#101114"/>
     </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#E9C78C"/>
+      <stop offset="0.5" stop-color="#C9A15C"/>
+      <stop offset="1" stop-color="#9C7A3C"/>
+    </linearGradient>
+    <radialGradient id="hi" cx="0.35" cy="0.3" r="0.8">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.09"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
   </defs>
 
-  <!-- 正圆背景（复刻网页 logo：border-radius 50%） -->
-  <circle cx="512" cy="512" r="512" fill="url(#bg)"/>
+  <!-- 深炭圆角方形背景 -->
+  <rect x="0" y="0" width="1024" height="1024" rx="230" fill="url(#bg)"/>
 
-  <!-- 白色黑胶唱片环（外环 r384 / 中心孔 r128，与原 SVG 比例一致） -->
-  <path fill="#FFFFFF" fill-rule="evenodd"
-        d="M512 128 a384 384 0 1 0 0 768 a384 384 0 0 0 0 -768 Z
-           m0 256 a128 128 0 1 1 0 256 a128 128 0 0 1 0 -256 Z"/>
+  <!-- 顶部高光 -->
+  <circle cx="512" cy="512" r="360" fill="url(#hi)"/>
+
+  <!-- 金色唱片环 -->
+  <circle cx="512" cy="512" r="330" fill="none" stroke="url(#gold)" stroke-width="16"/>
+  <g fill="none" stroke="url(#gold)" stroke-opacity="0.22">
+    <circle cx="512" cy="512" r="272" stroke-width="5"/>
+    <circle cx="512" cy="512" r="232" stroke-width="4"/>
+  </g>
+
+  <!-- 中央金色四分音符 -->
+  <g fill="url(#gold)">
+    <!-- 符头 -->
+    <ellipse cx="452" cy="570" rx="86" ry="60" transform="rotate(-18 452 570)"/>
+    <!-- 符杆 -->
+    <rect x="526" y="308" width="38" height="262" rx="19"/>
+    <!-- 旗 -->
+    <path d="M545 308 C 660 326 742 384 734 466 C 720 424 650 396 545 404 Z"/>
+  </g>
 </svg>
