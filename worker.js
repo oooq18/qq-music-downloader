@@ -246,7 +246,17 @@ export default {
       if (url.pathname === "/api/lyric") {
         const songmid = url.searchParams.get("songmid") || "";
         if (!songmid) return json({ message: "songmid 不能为空" }, 400);
-        return json(await getLyric(songmid));
+        const { lyric } = await getLyric(songmid);
+        if (url.searchParams.get("download") === "1") {
+          const fname = url.searchParams.get("fname") || "歌词";
+          return new Response(lyric, {
+            headers: {
+              "Content-Type": "application/octet-stream",
+              "Content-Disposition": `attachment; filename*=UTF-8''${encodeURIComponent(fname)}.lrc`,
+            },
+          });
+        }
+        return json({ lyric });
       }
       return json({ message: "Not Found" }, 404);
     } catch (err) {

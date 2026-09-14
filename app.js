@@ -272,14 +272,21 @@ async function downloadCover(song) {
   } catch (_) { toast("封面下载失败"); }
 }
 async function downloadLyric(song) {
+  const base = API_BASE + "/api/lyric?songmid=" + encodeURIComponent(song.songmid);
   try {
-    const r = await fetch(API_BASE + "/api/lyric?songmid=" + encodeURIComponent(song.songmid));
+    const r = await fetch(base);
     if (!r.ok) throw new Error("bad status");
     const d = await r.json();
     if (!d.lyric) { toast("这首歌没有歌词"); return; }
-    triggerDownload(new Blob([d.lyric], { type: "text/plain;charset=utf-8" }), sanitizeName(song.songname) + "_歌词.lrc");
-    toast("歌词已下载");
-  } catch (_) { toast("歌词下载失败"); }
+  } catch (_) { toast("歌词下载失败"); return; }
+  // 走服务端附件下载（Content-Disposition 强制 .lrc），手机浏览器也认
+  const a = document.createElement("a");
+  a.href = base + "&download=1&fname=" + encodeURIComponent(sanitizeName(song.songname) + "_歌词");
+  a.download = sanitizeName(song.songname) + "_歌词.lrc";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  toast("歌词已下载（.lrc 格式）");
 }
 
 function renderSongs(songs) {

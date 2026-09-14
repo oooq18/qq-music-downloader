@@ -200,6 +200,12 @@ app.get("/api/lyric", async (req, res) => {
     const lj = await lr.json();
     let lyric = "";
     if (lj && lj.lyric) lyric = decodeURIComponent(escape(Buffer.from(lj.lyric, "base64").toString("binary")));
+    if (String(req.query.download || "") === "1") {
+      const fname = String(req.query.fname || "歌词");
+      res.setHeader("Content-Type", "application/octet-stream");
+      res.setHeader("Content-Disposition", `attachment; filename*=UTF-8''${encodeURIComponent(fname)}.lrc`);
+      return res.send(lyric);
+    }
     res.json({ lyric });
   } catch (err) {
     res.status(500).json({ message: err.message || "歌词获取失败" });
