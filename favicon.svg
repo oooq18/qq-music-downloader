@@ -38,23 +38,4 @@
   <circle cx="512" cy="486" r="132" fill="url(#label)"/>
   <circle cx="512" cy="486" r="124" fill="none" stroke="#FFFFFF" stroke-opacity="0.28" stroke-width="3"/>
   <circle cx="512" cy="486" r="8" fill="#8A6A33"/>
-
-  <!-- 标准双八分音符 -->
-  <g fill="#FFFFFF">
-    <!-- 符头 -->
-    <ellipse cx="487" cy="510" rx="31" ry="22" transform="rotate(-18 487 510)"/>
-    <ellipse cx="577" cy="480" rx="31" ry="22" transform="rotate(-18 577 480)"/>
-    <!-- 符杆 -->
-    <rect x="514" y="402" width="13" height="106" rx="6.5"/>
-    <rect x="604" y="372" width="13" height="106" rx="6.5"/>
-    <!-- 横梁 -->
-    <path d="M 511 418 L 615 388 L 626 404 L 522 434 Z"/>
-  </g>
-
-  <!-- 下载箭头（右下，细而精致） -->
-  <g stroke="#FFFFFF" stroke-width="22" stroke-linecap="round" stroke-linejoin="round" fill="none">
-    <line x1="702" y1="596" x2="702" y2="686"/>
-    <polyline points="658,634 702,678 746,634"/>
-    <line x1="634" y1="716" x2="770" y2="716"/>
-  </g>
 </svg>
