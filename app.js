@@ -382,7 +382,12 @@ function renderSongs(songs) {
     const body = document.createElement("div");
     body.className = "song-body";
     body.innerHTML =
-      '<div class="song-name">' + escapeHtml(song.songname) + (song.vip ? '<span class="vip-tag">VIP</span>' : "") + "</div>" +
+      '<div class="song-name">' + escapeHtml(song.songname) +
+        (song.vip
+          ? currentAccountVip
+            ? '<span class="vip-tag">VIP</span>'
+            : '<span class="vip-tag need">需VIP</span>'
+          : "") + "</div>" +
       '<div class="song-meta">' +
         '<span class="singer">' + escapeHtml(song.singer || "未知歌手") + "</span>" +
         '<span class="sep">·</span>' +
