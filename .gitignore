@@ -5,3 +5,6 @@ node_modules
 .env
 .env.vip.bak
 wrangler.toml
+
+.env*
+*.bak*
