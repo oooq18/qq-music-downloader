@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>404 · 页面走丢了 — Music Downloader</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <style>
+    :root {
+      --bg-top: #FBF7F0;
+      --bg-bottom: #EFE4D2;
+      --ink: #1C1C1E;
+      --ink-2: #6E6A61;
+      --gold: #C9A15C;
+      --gold-deep: #A9833F;
+      --card: rgba(255, 255, 255, 0.7);
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "PingFang SC", "HarmonyOS Sans SC", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+      background: linear-gradient(180deg, var(--bg-top) 0%, var(--bg-bottom) 100%);
+      color: var(--ink);
+      overflow: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* 背景旋转唱片（极淡金色线条） */
+    .vinyl-bg {
+      position: fixed;
+      top: 50%; left: 50%;
+      width: 120vmin; height: 120vmin;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.5;
+    }
+    .vinyl-bg .disc { animation: spin 60s linear infinite; transform-origin: center; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .wrap {
+      position: relative;
+      z-index: 1;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 32px 20px;
+      text-align: center;
+    }
+
+    .brand {
+      position: absolute;
+      top: 28px; left: 50%;
+      transform: translateX(-50%);
+      display: flex; align-items: center; gap: 10px;
+      opacity: 0;
+      animation: rise 0.8s cubic-bezier(0.22, 1, 0.36, 1) 0.1s forwards;
+    }
+    .brand-mark {
+      width: 34px; height: 34px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      color: #fff;
+      background: linear-gradient(135deg, #FA6B57, #F0324B 45%, #A032C8);
+      box-shadow: 0 4px 14px rgba(240, 50, 75, 0.35);
+    }
+    .brand-name { font-size: 15px; font-weight: 700; letter-spacing: 0.4px; }
+
+    .bunny {
+      width: 176px; height: 176px;
+      margin-bottom: 28px;
+      filter: drop-shadow(0 22px 34px rgba(28, 28, 30, 0.18));
+      opacity: 0;
+      animation: rise 0.9s cubic-bezier(0.22, 1, 0.36, 1) 0.25s forwards;
+    }
+
+    .code {
+      font-size: clamp(88px, 20vw, 156px);
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      line-height: 1;
+      background: linear-gradient(180deg, #3A3A3E, #8A8578);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      opacity: 0;
+      animation: rise 0.9s cubic-bezier(0.22, 1, 0.36, 1) 0.4s forwards;
+    }
+    .code .zero {
+      background: linear-gradient(180deg, var(--gold), var(--gold-deep));
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      padding: 0 0.06em;
+    }
+
+    .title {
+      margin-top: 10px;
+      font-size: 20px;
+      font-weight: 600;
+      opacity: 0;
+      animation: rise 0.9s cubic-bezier(0.22, 1, 0.36, 1) 0.55s forwards;
+    }
+    .desc {
+      margin-top: 10px;
+      max-width: 360px;
+      font-size: 14px;
+      line-height: 1.7;
+      color: var(--ink-2);
+      opacity: 0;
+      animation: rise 0.9s cubic-bezier(0.22, 1, 0.36, 1) 0.7s forwards;
+    }
+
+    .home {
+      margin-top: 34px;
+      display: inline-flex; align-items: center; gap: 9px;
+      padding: 13px 30px;
+      border-radius: 999px;
+      border: none;
+      font-size: 15px;
+      font-weight: 600;
+      color: #fff;
+      cursor: pointer;
+      background: linear-gradient(135deg, var(--gold), var(--gold-deep));
+      box-shadow: 0 10px 26px rgba(169, 131, 63, 0.35);
+      transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.25s;
+      text-decoration: none;
+      opacity: 0;
+      animation: rise 0.9s cubic-bezier(0.22, 1, 0.36, 1) 0.85s forwards;
+    }
+    .home:hover { transform: translateY(-2px); box-shadow: 0 14px 32px rgba(169, 131, 63, 0.42); }
+    .home:active { transform: translateY(0); }
+    .home svg { width: 16px; height: 16px; }
+
+    .hint {
+      position: absolute;
+      bottom: 26px; left: 0; right: 0;
+      font-size: 12px;
+      color: var(--ink-2);
+      opacity: 0.75;
+      letter-spacing: 0.5px;
+      opacity: 0;
+      animation: rise 0.9s ease 1s forwards;
+    }
+
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(16px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .vinyl-bg .disc { animation: none; }
+      .brand, .bunny, .code, .title, .desc, .home, .hint { animation-duration: 0.01s; animation-delay: 0s; }
+    }
+  </style>
+</head>
+<body>
+  <div class="vinyl-bg" aria-hidden="true">
+    <svg class="disc" viewBox="0 0 200 200" width="100%" height="100%">
+      <g fill="none" stroke="#C9A15C" stroke-opacity="0.28">
+        <circle cx="100" cy="100" r="99" stroke-width="1"/>
+        <circle cx="100" cy="100" r="86" stroke-width="0.8"/>
+        <circle cx="100" cy="100" r="73" stroke-width="0.8"/>
+        <circle cx="100" cy="100" r="60" stroke-width="0.8"/>
+        <circle cx="100" cy="100" r="47" stroke-width="0.8"/>
+        <circle cx="100" cy="100" r="34" stroke-width="0.8"/>
+        <circle cx="100" cy="100" r="21" stroke-width="0.8"/>
+        <circle cx="100" cy="100" r="8" stroke-width="0.8"/>
+      </g>
+      <g stroke="#C9A15C" stroke-opacity="0.18" stroke-width="0.6">
+        <line x1="100" y1="0" x2="100" y2="200"/>
+        <line x1="0" y1="100" x2="200" y2="100"/>
+        <line x1="0" y1="0" x2="200" y2="200"/>
+        <line x1="200" y1="0" x2="0" y2="200"/>
+      </g>
+    </svg>
+  </div>
+
+  <div class="wrap">
+    <div class="brand">
+      <span class="brand-mark">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M12 3a9 9 0 0 0-9 9v9h9a9 9 0 0 0 0-18zm0 6a3 3 0 1 1 0 6 3 3 0 0 1 0-6z"/></svg>
+      </span>
+      <span class="brand-name">Music Downloader</span>
+    </div>
+
+    <svg class="bunny" viewBox="103 93 1072 1072" xmlns="http://www.w3.org/2000/svg">
+      <path d="M449 120L299 235L221 457L295 715L535 600L570 575L567 311Z" fill="#9252CE"/>
+      <path d="M831 125L690 315L689 564L804 676L956 676L1057 449L971 231Z" fill="#C98FF1"/>
+      <path d="M515 566L314 679L227 780L224 907L302 1022L462 1118L620 1139L804 1119L954 1034L1049 907L1049 784L956 676L804 676L689 564Z" fill="#C98FF1" stroke="#C98FF1" stroke-width="4" stroke-linejoin="miter"/>
+      <path d="M426 754L327 785L274 876L266 892L426 892Z" fill="#FED85D"/>
+      <path d="M428 754L427 892L587 892L548 796L443 755Z" fill="#2D3A65"/>
+      <path d="M839 754L802 765L709 796L660 892L839 892Z" fill="#FED85D"/>
+      <path d="M840 754L840 892L1004 892L944 787L846 755Z" fill="#2D3A65"/>
+      <path d="M498 957L750 957L710 1047L622 1064L535 1046Z" fill="#FED85D"/>
+      <path d="M575 958L588 1058" stroke="#C9863E" stroke-width="7" fill="none" stroke-linecap="butt"/>
+      <path d="M681 958L674 1057" stroke="#C9863E" stroke-width="7" fill="none" stroke-linecap="butt"/>
+    </svg>
+
+    <div class="code" aria-label="404">4<span class="zero">0</span>4</div>
+    <div class="title">这个页面走丢了</div>
+    <div class="desc">你访问的页面不存在或已被移动，兔子找不到它了。回首页继续听歌吧。</div>
+
+    <a class="home" href="./">
+      返回首页
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+    </a>
+
+    <div class="hint">MUSIC DOWNLOADER · 404</div>
+  </div>
+</body>
+</html>
