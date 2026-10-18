@@ -40,6 +40,20 @@ function maskQq(qq) {
   return s.slice(0, 3) + "****" + s.slice(-4);
 }
 
+function updateAccountBar() {
+  if (!accountBarEl) return;
+  if (currentSource === "netease") {
+    accountBarEl.innerHTML =
+      '<button class="account-chip active active-vip" type="button" disabled>' +
+      '<span class="acc-name">网易云音乐</span>' +
+      '<span class="acc-qq">SVIP 账号</span>' +
+      '<span class="acc-vip">SVIP</span>' +
+      '</button>';
+  } else {
+    renderAccountBar();
+  }
+}
+
 function renderAccountBar() {
   if (!accountBarEl) return;
   if (!accountList.length) {
@@ -64,7 +78,7 @@ function renderAccountBar() {
       currentAccount = a.qq;
       currentAccountVip = !!a.vip;
       localStorage.setItem(ACCOUNT_KEY, currentAccount);
-      renderAccountBar();
+      updateAccountBar();
       refreshListVipTags();
     });
     accountBarEl.appendChild(chip);
@@ -83,7 +97,7 @@ async function loadAccounts() {
       }
       const cur = accountList.find((a) => a.qq === currentAccount);
       currentAccountVip = !!(cur && cur.vip);
-      renderAccountBar();
+      updateAccountBar();
     }
   } catch (_) {
     // 账号接口不可用时静默降级，不影响搜索下载
@@ -914,12 +928,11 @@ document.querySelectorAll(".src-btn").forEach((btn) => {
     statusEl.innerHTML = "";
     paginationEl.classList.add("hidden");
     headerStatus.textContent = "STANDBY";
-    // 网易云不需要账号，隐藏账号栏
-    if (accountBarEl) accountBarEl.style.display = currentSource === "netease" ? "none" : "";
+    updateAccountBar();
   });
 });
-// 初始化时根据音源隐藏/显示账号栏
-if (accountBarEl && currentSource === "netease") accountBarEl.style.display = "none";
+// 初始化时更新账号栏
+updateAccountBar();
 
 // 页面启动：加载账号列表（含 VIP 状态）
 loadAccounts();
