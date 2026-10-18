@@ -214,19 +214,20 @@ async function neteaseSearch(keyword, page = 1, pageSize = 20) {
   return { items, total };
 }
 
-async function neteaseDownload(id, quality) {
-  if (quality === "128") {
-    return `${NETEASE_OUTER_URL}?id=${id}.mp3`;
-  }
-  const br = quality === "flac" ? 999000 : 320000;
-  const res = await fetch(`${NETEASE_PLAYER_URL}?id=${id}&ids=[${id}]&br=${br}`, {
-    headers: { Referer: NETEASE_REFERER, "User-Agent": UA },
-  });
+async function neteaseDownload(id, quality, env) {
+  const neCookie = env?.NETEASE_COOKIE || "";
+  const headers = { Referer: NETEASE_REFERER, "User-Agent": UA };
+  if (neCookie) headers.Cookie = neCookie;
+  // 网易云音质：standard=128k, higher=192k, exhigh=320k, lossless=flac
+  const brMap = { "128": 128000, "192": 192000, "320": 32000, "flac": 999000 };
+  const br = brMap[quality] || 128000;
+  const res = await fetch(`${NETEASE_PLAYER_URL}?id=${id}&ids=[${id}]&br=${br}`, { headers });
   if (!res.ok) throw new Error("网易云下载接口返回 " + res.status);
   const data = await res.json();
-  const url = data?.data?.[0]?.url;
+  const item = data?.data?.[0];
+  const url = item?.url;
   if (!url) throw new Error("该音质暂无版权或需要VIP");
-  return url;
+  return { url, type: item?.type || (quality === "flac" ? "flac" : "mp3"), br: item?.br || br };
 }
 
 async function neteaseLyric(id) {
@@ -376,11 +377,11 @@ export default {
       }
       if (url.pathname === "/api/netease/download") {
         const id = url.searchParams.get("id") || "";
-        const quality = ["flac", "320", "128"].includes(url.searchParams.get("quality"))
+        const quality = ["flac", "320", "192", "128"].includes(url.searchParams.get("quality"))
           ? url.searchParams.get("quality") : "128";
         if (!id) return json({ message: "id 不能为空" }, 400);
-        const streamUrl = await neteaseDownload(id, quality);
-        return json({ url: streamUrl, source: "netease", quality });
+        const result = await neteaseDownload(id, quality, env);
+        return json({ url: result.url, source: "netease", quality, type: result.type, br: result.br });
       }
       if (url.pathname === "/api/netease/lyric") {
         const id = url.searchParams.get("id") || "";

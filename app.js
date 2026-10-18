@@ -436,9 +436,13 @@ let panelSong = null;
 const QUALITY_DESC = {
   flac: { label: "FLAC 无损", tag: "无损" },
   320: { label: "320kbps", tag: "高清" },
-  128: { label: "128kbps", tag: "试听" },
+  192: { label: "192kbps", tag: "较高" },
+  128: { label: "128kbps", tag: "标准" },
 };
 const QQ_QUAL_ORDER = ["flac", "320", "128"];
+const NETEASE_QUAL_ORDER = ["flac", "320", "192", "128"];
+// 网易云音质显示名称
+const NETEASE_QUAL_LABELS = { flac: "无损音质", 320: "极高品质", 192: "较高品质", 128: "标准品质" };
 
 function openDlPanel(song) {
   panelSong = song;
@@ -471,21 +475,28 @@ function closeDlPanel() {
 function renderDlRows() {
   if (!panelSong) return;
   dlRows.innerHTML = "";
+  const isNetease = panelSong.source === "netease";
   // 当前账号状态提示条
-  const acc = accountList.find((a) => a.qq === currentAccount);
-  dlAcc.className = "dl-acc" + (acc && acc.vip ? " vip" : "");
-  dlAcc.textContent = acc
-    ? acc.vip
-      ? "当前账号 " + acc.name + " · VIP 已启用"
-      : "当前账号 " + acc.name + " · 免费版，VIP 歌曲仅开放试听音质"
-    : "未选择下载账号";
-  QQ_QUAL_ORDER.forEach((q, i) => {
+  if (isNetease) {
+    dlAcc.className = "dl-acc vip";
+    dlAcc.textContent = "网易云音乐 · SVIP 已启用";
+  } else {
+    const acc = accountList.find((a) => a.qq === currentAccount);
+    dlAcc.className = "dl-acc" + (acc && acc.vip ? " vip" : "");
+    dlAcc.textContent = acc
+      ? acc.vip
+        ? "当前账号 " + acc.name + " · VIP 已启用"
+        : "当前账号 " + acc.name + " · 免费版，VIP 歌曲仅开放试听音质"
+      : "未选择下载账号";
+  }
+  const qualOrder = isNetease ? NETEASE_QUAL_ORDER : QQ_QUAL_ORDER;
+  qualOrder.forEach((q, i) => {
     const row = renderDlRow(panelSong, q);
     row.style.animationDelay = (0.06 + i * 0.07).toFixed(2) + "s";
     dlRows.appendChild(row);
   });
   // 附加下载：封面 / 歌词（与音质行同风格）
-  const n = QQ_QUAL_ORDER.length;
+  const n = qualOrder.length;
   [["cover", ICON_COVER + " 下载封面", () => downloadCover(panelSong)],
    ["lrc", ICON_LRC + " 下载歌词", () => downloadLyric(panelSong)]].forEach(([kind, label, fn], i) => {
     const row = document.createElement("button");
@@ -608,7 +619,11 @@ function refreshListVipTags() {
   }
 }
 function renderDlRow(song, q) {
-  const size = song[QUALITY_SIZE_KEYS[q]];
+  const isNetease = song.source === "netease";
+  const qd = isNetease
+    ? { label: NETEASE_QUAL_LABELS[q] || q, tag: q === "flac" ? "无损" : q === "320" ? "极高" : q === "192" ? "较高" : "标准" }
+    : QUALITY_DESC[q];
+  const size = song[QUALITY_SIZE_KEYS[q]] || 0;
   const key = song.songmid + "-" + q;
   const row = document.createElement("button");
   row.className = "dl-row";
@@ -621,7 +636,7 @@ function renderDlRow(song, q) {
     row.classList.add("downloading");
     row.disabled = true;
     row.innerHTML =
-      '<span class="dl-q">' + QUALITY_DESC[q].label + "</span>" +
+      '<span class="dl-q">' + qd.label + "</span>" +
       '<span class="dl-size">' + (size ? formatSize(size) : "") + "</span>" +
       '<span class="dl-status">' + (state.progress || 0) + "%</span>" +
       '<span class="dl-progress" style="width:' + (state.progress || 0) + '%"></span>';
@@ -629,14 +644,14 @@ function renderDlRow(song, q) {
     row.classList.add("done");
     row.disabled = true;
     row.innerHTML =
-      '<span class="dl-q">' + QUALITY_DESC[q].label + "</span>" +
+      '<span class="dl-q">' + qd.label + "</span>" +
       '<span class="dl-size">' + (size ? formatSize(size) : "") + "</span>" +
       '<span class="dl-status">' + ICON_CHECK + " 已完成</span>";
   } else if (state && state.status === "error") {
     row.classList.add("error");
     row.title = state.error || "";
     row.innerHTML =
-      '<span class="dl-q">' + QUALITY_DESC[q].label + "</span>" +
+      '<span class="dl-q">' + qd.label + "</span>" +
       '<span class="dl-size">' + (size ? formatSize(size) : "") + "</span>" +
       '<span class="dl-status">' + ICON_RETRY + " 重试</span>";
     row.addEventListener("click", () => startDownload(song, q));
@@ -646,8 +661,8 @@ function renderDlRow(song, q) {
     row.disabled = true;
     row.title = checked.error || "该音质需 VIP 会员";
     row.innerHTML =
-      '<span class="dl-q">' + QUALITY_DESC[q].label + "</span>" +
-      '<span class="dl-tag">' + QUALITY_DESC[q].tag + "</span>" +
+      '<span class="dl-q">' + qd.label + "</span>" +
+      '<span class="dl-tag">' + qd.tag + "</span>" +
       '<span class="dl-size">' + (size ? formatSize(size) : "") + "</span>" +
       '<span class="dl-status">需VIP</span>';
   } else if (!checked && !currentAccountVip) {
@@ -656,8 +671,8 @@ function renderDlRow(song, q) {
     row.disabled = true;
     row.title = "正在用当前账号检测该音质权限";
     row.innerHTML =
-      '<span class="dl-q">' + QUALITY_DESC[q].label + "</span>" +
-      '<span class="dl-tag">' + QUALITY_DESC[q].tag + "</span>" +
+      '<span class="dl-q">' + qd.label + "</span>" +
+      '<span class="dl-tag">' + qd.tag + "</span>" +
       '<span class="dl-size">' + (size ? formatSize(size) : "") + "</span>" +
       '<span class="dl-status">检测中</span>';
   } else if (!size) {
@@ -665,14 +680,14 @@ function renderDlRow(song, q) {
     row.disabled = true;
     row.title = "该音质不可用";
     row.innerHTML =
-      '<span class="dl-q">' + QUALITY_DESC[q].label + "</span>" +
-      '<span class="dl-tag">' + QUALITY_DESC[q].tag + "</span>" +
+      '<span class="dl-q">' + qd.label + "</span>" +
+      '<span class="dl-tag">' + qd.tag + "</span>" +
       '<span class="dl-size">暂无</span>' +
       '<span class="dl-status">不可用</span>';
   } else {
     row.innerHTML =
-      '<span class="dl-q">' + QUALITY_DESC[q].label + "</span>" +
-      '<span class="dl-tag">' + QUALITY_DESC[q].tag + "</span>" +
+      '<span class="dl-q">' + qd.label + "</span>" +
+      '<span class="dl-tag">' + qd.tag + "</span>" +
       '<span class="dl-size">' + formatSize(size) + "</span>" +
       '<span class="dl-status">' + ICON_DL + ' 下载</span>';
     row.addEventListener("click", () => startDownload(song, q));
