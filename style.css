@@ -156,6 +156,37 @@ body {
   box-shadow: 0 12px 44px rgba(0, 0, 0, 0.12), 0 0 0 3px rgba(0, 0, 0, 0.04);
 }
 
+/* ---- 音源切换 ---- */
+.source-switcher {
+  margin-top: 12px;
+  display: inline-flex;
+  gap: 4px;
+  background: var(--glass);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 3px;
+  animation: fadeUp 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.35s both;
+}
+.src-btn {
+  border: none;
+  background: transparent;
+  color: var(--text2);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 6px 18px;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.src-btn:hover { color: var(--text); }
+.src-btn.active {
+  background: var(--text);
+  color: var(--bg);
+  font-weight: 600;
+}
+
 /* ---- 下载账号切换条 ---- */
 .account-bar {
   margin-top: 14px;

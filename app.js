@@ -14,6 +14,10 @@ let currentTotal = 0;
 let currentKw = "";
 const PAGE_SIZE = 20;
 
+// ---- 音源切换 ----
+const SOURCE_KEY = "music_source";
+let currentSource = localStorage.getItem(SOURCE_KEY) || "qq";
+
 const paginationEl = document.getElementById("pagination");
 const prevPageBtn = document.getElementById("prevPage");
 const nextPageBtn = document.getElementById("nextPage");
@@ -229,6 +233,7 @@ function applyCoverTheme(palette) {
 }
 function coverOf(song) {
   if (!song) return "";
+  if (song.source === "netease" && song.cover) return song.cover;
   return song.albummid ? API_BASE + "/api/cover?albummid=" + encodeURIComponent(song.albummid) : "";
 }
 
@@ -245,7 +250,8 @@ async function handleSearch(page = 1) {
   metaEl.textContent = "";
   listEl.innerHTML = "";
   try {
-    const res = await fetch(API_BASE + "/api/music/search?q=" + encodeURIComponent(kw) + "&page=" + page + "&pageSize=" + PAGE_SIZE);
+    const searchApi = currentSource === "netease" ? "/api/netease/search" : "/api/music/search";
+    const res = await fetch(API_BASE + searchApi + "?q=" + encodeURIComponent(kw) + "&page=" + page + "&pageSize=" + PAGE_SIZE);
     if (!res.ok) throw new Error("搜索请求失败");
     const data = await res.json();
     if (!data.items || data.items.length === 0) {
@@ -275,7 +281,7 @@ async function handleSearch(page = 1) {
     }
     // 用首曲封面驱动页面氛围
     const first = currentSongs[0];
-    if (first && first.albummid) {
+    if (first && (first.albummid || first.cover)) {
       const img = new Image();
       img.onload = () => { try { applyCoverTheme(extractPalette(img)); } catch (_) {} };
       img.src = coverOf(first);
@@ -511,13 +517,17 @@ const qualityCheckCache = new Map();
 const qualityCheckInflight = new Map();
 async function checkQuality(song, q, accQq) {
   const acc = accQq || currentAccount;
-  const key = song.songmid + "-" + q + "-" + acc;
+  const key = song.songmid + "-" + q + "-" + acc + "-" + (song.source || "qq");
   if (qualityCheckCache.has(key)) return qualityCheckCache.get(key);
   if (qualityCheckInflight.has(key)) return qualityCheckInflight.get(key);
   const p = (async () => {
-    const r = await fetch(
-      API_BASE + "/api/music/download?songmid=" + encodeURIComponent(song.songmid) + "&quality=" + q + "&account=" + encodeURIComponent(acc)
-    );
+    let apiUrl;
+    if (song.source === "netease") {
+      apiUrl = API_BASE + "/api/netease/download?id=" + encodeURIComponent(song.songmid) + "&quality=" + q;
+    } else {
+      apiUrl = API_BASE + "/api/music/download?songmid=" + encodeURIComponent(song.songmid) + "&quality=" + q + "&account=" + encodeURIComponent(acc);
+    }
+    const r = await fetch(apiUrl);
     let data = {};
     try { data = await r.json(); } catch (_) {}
     const ok = !!data.url;
@@ -568,6 +578,15 @@ function refreshListVipTags() {
   if (!currentSongs.length) return;
   // 清掉现有全部标
   document.querySelectorAll(".song .song-name .vip-tag").forEach((t) => t.remove());
+  // 网易云：直接用搜索返回的 vip 字段，不需要交叉实测
+  if (currentSource === "netease" || currentSongs.some((s) => s.source === "netease")) {
+    currentSongs.forEach((song) => {
+      if (song.source === "netease" && song.vip) {
+        updateListVipByCheck(song, true);
+      }
+    });
+    return;
+  }
   if (currentAccountVip) {
     // VIP 账号：优先用列表中的非会员账号交叉实测（非会员取不到128=会员歌→显示VIP标）
     const probeAcc = accountList.find((a) => !a.vip && a.qq !== currentAccount);
@@ -735,15 +754,23 @@ async function startDownload(song, q) {
   const fill = bar.querySelector(".fill");
 
   try {
-    const dlParams = "songmid=" + encodeURIComponent(song.songmid) + "&quality=" + q + accountParam();
+    let dlApi, lyricApi;
+    if (song.source === "netease") {
+      dlApi = API_BASE + "/api/netease/download?id=" + encodeURIComponent(song.songmid) + "&quality=" + q;
+      lyricApi = API_BASE + "/api/netease/lyric?id=" + encodeURIComponent(song.songmid);
+    } else {
+      const dlParams = "songmid=" + encodeURIComponent(song.songmid) + "&quality=" + q + accountParam();
+      dlApi = API_BASE + "/api/music/download?" + dlParams;
+      lyricApi = API_BASE + "/api/lyric?songmid=" + encodeURIComponent(song.songmid);
+    }
     const [dlRes, coverBlob, lyricText] = await Promise.all([
-      fetch(API_BASE + "/api/music/download?" + dlParams),
+      fetch(dlApi),
       coverOf(song)
         ? fetch(coverOf(song))
             .then((r) => (r.ok ? r.blob() : null))
             .catch(() => null)
         : Promise.resolve(null),
-      fetch(API_BASE + "/api/lyric?songmid=" + encodeURIComponent(song.songmid))
+      fetch(lyricApi)
         .then((r) => (r.ok ? r.json().then((j) => j.lyric || "") : ""))
         .catch(() => ""),
     ]);
@@ -854,6 +881,31 @@ function updateListDlBtn(song, q, pct) {
 searchBtn.addEventListener("click", handleSearch);
 keywordEl.addEventListener("keydown", (e) => { if (e.key === "Enter") handleSearch(); });
 
+// 音源切换
+document.querySelectorAll(".src-btn").forEach((btn) => {
+  if (btn.dataset.src === currentSource) {
+    document.querySelectorAll(".src-btn").forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+  }
+  btn.addEventListener("click", () => {
+    currentSource = btn.dataset.src;
+    localStorage.setItem(SOURCE_KEY, currentSource);
+    document.querySelectorAll(".src-btn").forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+    // 切音源后清空搜索结果
+    currentSongs = [];
+    listEl.innerHTML = "";
+    metaEl.textContent = "";
+    statusEl.innerHTML = "";
+    paginationEl.classList.add("hidden");
+    headerStatus.textContent = "STANDBY";
+    // 网易云不需要账号，隐藏账号栏
+    if (accountBarEl) accountBarEl.style.display = currentSource === "netease" ? "none" : "";
+  });
+});
+// 初始化时根据音源隐藏/显示账号栏
+if (accountBarEl && currentSource === "netease") accountBarEl.style.display = "none";
+
 // 页面启动：加载账号列表（含 VIP 状态）
 loadAccounts();
 
@@ -957,7 +1009,10 @@ function updateLyrics(time) {
 async function loadLyrics(song) {
   renderLyrics([]);
   try {
-    const res = await fetch(API_BASE + "/api/lyric?songmid=" + encodeURIComponent(song.songmid));
+    const lyricApi = song.source === "netease"
+      ? API_BASE + "/api/netease/lyric?id=" + encodeURIComponent(song.songmid)
+      : API_BASE + "/api/lyric?songmid=" + encodeURIComponent(song.songmid);
+    const res = await fetch(lyricApi);
     if (!res.ok) throw new Error("no lyric");
     const j = await res.json();
     renderLyrics(parseLrc(j.lyric));
@@ -988,8 +1043,14 @@ async function togglePlay(song, btn) {
 
   setPlayBtn(btn, false);
   try {
-    const dlParams = "songmid=" + encodeURIComponent(song.songmid) + "&quality=128" + accountParam();
-    const res = await fetch(API_BASE + "/api/music/download?" + dlParams);
+    let playApi;
+    if (song.source === "netease") {
+      playApi = API_BASE + "/api/netease/download?id=" + encodeURIComponent(song.songmid) + "&quality=128";
+    } else {
+      const dlParams = "songmid=" + encodeURIComponent(song.songmid) + "&quality=128" + accountParam();
+      playApi = API_BASE + "/api/music/download?" + dlParams;
+    }
+    const res = await fetch(playApi);
     let data = {};
     try { data = await res.json(); } catch (_) {}
     if (!res.ok || !data.url) throw new Error(data.message || "获取播放地址失败");

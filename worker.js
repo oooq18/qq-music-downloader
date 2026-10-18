@@ -17,9 +17,15 @@ const RESPONSE_XOR_KEY_HEX = "7a3f8c1d5e9b2f0a6c4d7e8b1f3a5c9d0e2b6f4a81";
 const SIGN_XOR_BYTES = [89,39,179,150,218,82,58,252,177,52,186,123,120,64,242,133,143,161,121,179];
 const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 const REFERER = "https://y.qq.com/";
-const SEARCH_URL = "https://c.y.qq.com/soso/fcgi-bin/client_search_cp";
+const SEARCH_URL = "https://shc.y.qq.com/soso/fcgi-bin/search_for_qq_cp";
 const VKEY_URL = "https://u6.y.qq.com/cgi-bin/musics.fcg";
 const STREAM_BASE = "https://isure.stream.qqmusic.qq.com/";
+// 网易云音乐
+const NETEASE_SEARCH_URL = "https://music.163.com/api/search/get/web";
+const NETEASE_LYRIC_URL = "https://music.163.com/api/song/lyric";
+const NETEASE_PLAYER_URL = "https://music.163.com/api/song/enhance/player/url";
+const NETEASE_OUTER_URL = "https://music.163.com/song/media/outer/url";
+const NETEASE_REFERER = "https://music.163.com/";
 // VIP 探测曲目：周杰伦《晴天》（VIP 独占，非会员请求无损必然失败）
 const PROBE_SONGMID = "0039MnYb0qxYhV";
 const VIP_CACHE_TTL = 5 * 60 * 1000; // 5 分钟缓存
@@ -180,6 +186,60 @@ async function search(keyword, page = 1, pageSize = 20) {
   return { items, total };
 }
 
+// ===== 网易云音乐 =====
+async function neteaseSearch(keyword, page = 1, pageSize = 20) {
+  const offset = (page - 1) * pageSize;
+  const body = new URLSearchParams({ s: keyword, type: "1", limit: String(pageSize), offset: String(offset) });
+  const res = await fetch(NETEASE_SEARCH_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded", Referer: NETEASE_REFERER, "User-Agent": UA },
+    body,
+  });
+  if (!res.ok) throw new Error("网易云搜索返回 " + res.status);
+  const data = await res.json();
+  const songs = data?.result?.songs ?? [];
+  const total = data?.result?.songCount ?? 0;
+  const items = songs.map((s) => ({
+    songmid: String(s.id),
+    albummid: "",
+    cover: s.album?.picUrl || "",
+    songname: s.name || "",
+    singer: (s.artists || []).map((x) => x.name).join("、"),
+    albumname: s.album?.name || "",
+    interval: Math.floor((s.duration || 0) / 1000),
+    sizeflac: 0, size320: 0, size128: 0,
+    vip: (s.fee === 1 || s.fee === 4) ? true : false,
+    source: "netease",
+  }));
+  return { items, total };
+}
+
+async function neteaseDownload(id, quality) {
+  if (quality === "128") {
+    return `${NETEASE_OUTER_URL}?id=${id}.mp3`;
+  }
+  const br = quality === "flac" ? 999000 : 320000;
+  const res = await fetch(`${NETEASE_PLAYER_URL}?id=${id}&ids=[${id}]&br=${br}`, {
+    headers: { Referer: NETEASE_REFERER, "User-Agent": UA },
+  });
+  if (!res.ok) throw new Error("网易云下载接口返回 " + res.status);
+  const data = await res.json();
+  const url = data?.data?.[0]?.url;
+  if (!url) throw new Error("该音质暂无版权或需要VIP");
+  return url;
+}
+
+async function neteaseLyric(id) {
+  const res = await fetch(`${NETEASE_LYRIC_URL}?id=${id}&lv=1&kv=1&tv=-1`, {
+    headers: { Referer: NETEASE_REFERER, "User-Agent": UA },
+  });
+  if (!res.ok) throw new Error("歌词获取失败");
+  const data = await res.json();
+  const lyric = data?.lrc?.lyric || "";
+  const tlyric = data?.tlyric?.lyric || "";
+  return { lyric, tlyric };
+}
+
 // 封面图片（Worker 代理，附带 CORS 头供前端 fetch）
 async function getCover(albummid) {
   const img = await fetch(`https://y.qq.com/music/photo_new/T002R800x800M000${albummid}_2.jpg?max_age=2592000`, {
@@ -289,7 +349,7 @@ export default {
       if (url.pathname === "/api/stream") {
         // 音频代理：绕过 CDN 的 CORS 限制（部分 CDN 无跨域头，浏览器无法直接拉流）
         const target = url.searchParams.get("url") || "";
-        if (!/^https?:\/\/([\w-]+\.)*(y\.qq\.com|stream\.qqmusic\.qq\.com|qqmusic\.qq\.com)\//i.test(target)) {
+        if (!/^https?:\/\/([\w-]+\.)*(y\.qq\.com|stream\.qqmusic\.qq\.com|qqmusic\.qq\.com|music\.126\.net)\//i.test(target)) {
           return json({ ok: false, message: "仅允许音乐 CDN 地址" });
         }
         const res = await fetch(target, {
@@ -306,6 +366,36 @@ export default {
         const page = Math.max(1, parseInt(url.searchParams.get("page")) || 1);
         const pageSize = Math.min(50, Math.max(1, parseInt(url.searchParams.get("pageSize")) || 20));
         return json(await search(q, page, pageSize));
+      }
+      if (url.pathname === "/api/netease/search") {
+        const q = (url.searchParams.get("q") || "").trim();
+        if (!q) return json({ message: "搜索关键词不能为空" }, 400);
+        const page = Math.max(1, parseInt(url.searchParams.get("page")) || 1);
+        const pageSize = Math.min(50, Math.max(1, parseInt(url.searchParams.get("pageSize")) || 20));
+        return json(await neteaseSearch(q, page, pageSize));
+      }
+      if (url.pathname === "/api/netease/download") {
+        const id = url.searchParams.get("id") || "";
+        const quality = ["flac", "320", "128"].includes(url.searchParams.get("quality"))
+          ? url.searchParams.get("quality") : "128";
+        if (!id) return json({ message: "id 不能为空" }, 400);
+        const streamUrl = await neteaseDownload(id, quality);
+        return json({ url: streamUrl, source: "netease", quality });
+      }
+      if (url.pathname === "/api/netease/lyric") {
+        const id = url.searchParams.get("id") || "";
+        if (!id) return json({ message: "id 不能为空" }, 400);
+        const { lyric, tlyric } = await neteaseLyric(id);
+        if (url.searchParams.get("download") === "1") {
+          const fname = url.searchParams.get("fname") || "歌词";
+          return new Response(lyric, {
+            headers: {
+              "Content-Type": "application/octet-stream",
+              "Content-Disposition": `attachment; filename*=UTF-8''${encodeURIComponent(fname)}.lrc`,
+            },
+          });
+        }
+        return json({ lyric, tlyric });
       }
       if (url.pathname === "/api/music/download") {
         const songmid = url.searchParams.get("songmid") || url.searchParams.get("hash") || "";
